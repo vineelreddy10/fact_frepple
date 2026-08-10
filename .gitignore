@@ -53,3 +53,11 @@ jspm_packages/
 
 # Aider AI Chat
 .aider*
+
+# Internal marker for the Phase 2 migration script (scripts/migrate_phase2.sh).
+# Idempotency guard; regenerated on each --force run.
+.fact_frepple_migrated
+
+# opencode tooling (skill cache, lockfile)
+.agents/
+skills-lock.json
