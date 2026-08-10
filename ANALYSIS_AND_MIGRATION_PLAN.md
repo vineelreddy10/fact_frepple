@@ -262,6 +262,13 @@ The page JS itself still works in v17 — the `frappe.pages['x'].on_page_load` p
 
 ## 8. What v17 changes that will break this code (revised for v17)
 
+**Status (2026-08-10, post-Phase 4):** all B-items and soft issues below are
+resolved on `feat/migrate-v17`. Verified by inspection of the migrated tree:
+0 files still carry `"module": "Frepple"`, 0 `.py` files still import
+`get_request_session` or `from __future__ import unicode_literals`, and all
+29 DocType JSONs carry `sort_field`/`sort_order`. The **Fix** column is the
+fix that was applied, not a proposal.
+
 | # | What breaks in v17 | Where in this app | Fix |
 |---|---|---|---|
 | B1 | `from frappe.utils import get_request_session` is removed (since v15). | `data_export.py` and any helper that touches it | Drop the import; use `frappe.integrations.utils.make_get_request` |
@@ -280,12 +287,24 @@ The page JS itself still works in v17 — the `frappe.pages['x'].on_page_load` p
 
 | # | What | Where | Fix |
 |---|---|---|---|
-| S1 | `from __future__ import unicode_literals` (Python 2 relic). | All .py files | Remove |
-| S2 | `print(...)` statements (ad-hoc logging). | Both controllers | Replace with `frappe.logger().info(...)` |
-| S3 | `app_license = "MIT"` in scaffold but source is GPLv3. | repo license | Scaffold stays MIT; add `NOTICE` file crediting msf4-0 |
-| S4 | No `patches.txt` / migration patches in source. | repository root | Add `[post_model_sync]` entry for any field renames between v14 and v17 |
-| S5 | Test stubs. | `test_*.py` | Replace with real tests (see spec §5 Phase 4) |
-| S6 | No CI. | repository root | Add `bench run-tests` + lint to `.github/workflows/ci.yml` (already scaffolded) |
+| S1 | `from __future__ import unicode_literals` (Python 2 relic). | All .py files | Removed |
+| S2 | `print(...)` statements (ad-hoc logging). | Both controllers | Replaced with `frappe.logger().info(...)` |
+| S3 | `app_license = "MIT"` in scaffold but source is GPLv3. | repo license | Scaffold stays MIT; `NOTICE` credits msf4-0 and flags the GPLv3 chain |
+| S4 | No `patches.txt` / migration patches in source. | repository root | `patches.txt` scaffolded; no v14→v17 field renames needed a patch (greenfield site) |
+| S5 | Test stubs. | `test_*.py` | Replaced with real tests in Phase 4 (37 tests) |
+| S6 | No CI. | repository root | `ci.yml` runs bench tests; `linter.yml` runs ruff + prettier + pip-audit |
+
+### Bugs found during migration (not predicted by this analysis)
+
+These surfaced only because Phase 4 replaced the stubs with real tests — they
+are the concrete return on that phase:
+
+| # | Bug | Fixed in |
+|---|---|---|
+| M1 | `fetch_items` wrote `uom`/`cost`/`item_owner`, which don't exist on the v17 `Frepple Item` DocType | `a399e2d` — renamed to `stock_uom`/`valuation_rate`/`item_group` |
+| M2 | `get_iframe_url` passed `doc.expiration` (minutes) where `sign_jwt_url` expects seconds | `a399e2d` — multiplied by 60 |
+| M3 | `UnitTestCase` has no implicit rollback, so the second fetch silently took the update branch | `6be757c` — mirror DocTypes scrubbed in `setUp` |
+| M4 | `sign_jwt_url` used `round(time.time())`, putting `exp` a second past a truncated-clock upper bound (failed 7/12 runs) | `246b327` — truncate with `int()` |
 
 ### Non-issues (verified against v17 source)
 
@@ -300,7 +319,7 @@ The page JS itself still works in v17 — the `frappe.pages['x'].on_page_load` p
 
 ## 9. Migration plan (active spec lives in `specs/migrate-v17.md`)
 
-This section is a **summary** — for the full phase plan with decision rationale, per-phase acceptance gates, and risks, see [`specs/migrate-v17.md`](./specs/migrate-v17.md).
+This section is a **summary** — for the full phase plan with decision rationale, per-phase acceptance gates, and risks, see [`specs/migrate-v17.md`](./specs/migrate-v17.md). Per-phase completion notes live there; Phases 0–5 are done, Phase 6 is pending.
 
 ### Phase 0 — Repository & source prep (~½ day)
 Clone source to `/tmp/opencode/erpnext_frepple_connector/`; create `feat/migrate-v17` branch off `dev`.
@@ -321,7 +340,7 @@ Migrate 5 remaining iframe pages + `Frepple Run Plan` DocType + workspace config
 Replace stub tests with real ones (`responses` lib + `unittest`). Add CI step for `bench run-tests`. Add `NOTICE` file.
 
 ### Phase 5 — Spec reconciliation + handoff (~½ day)
-This document is updated. PR `feat/migrate-v17 → dev`.
+This document is updated (§8, §12, §13). PR `feat/migrate-v17 → dev`.
 
 ### Phase 6 — End-to-end two-way transfer test (~2 days)
 Stand up ERPNext fixtures (1 SO → 1 WO + 1 PO). Run the full export → plan → fetch round-trip against the real frepple container from Phase 0.5. Validate the WO and PO land in ERPNext with correct quantities.
@@ -332,19 +351,22 @@ Stand up ERPNext fixtures (1 SO → 1 WO + 1 PO). Run the full export → plan �
 
 ## 10. Risks and unknowns
 
-| # | Risk | Mitigation |
-|---|---|---|
-| 1 | msf4-0 repo deleted or significantly evolved | Phase 0 step 1 fails fast. Backup: ask user for internal fork |
-| 2 | frepple 9.17 REST API contract differs from 2022 source code | Phase 6 E2E catches it (real frepple, not mocks) |
-| 3 | v14 user data on existing customer sites (mirror DocType rows edited by hand) | We are greenfield on `test.localhost`. Forward-compatible `patches.txt` for future upgrades |
-| 4 | ERPNext v17 field renames (`Item.valuation_rate`, `Bin.actual_qty`, `BOM.time_in_mins`, `Workstation`) | Audit per field mapping in Phase 2 |
-| 5 | Type-annotation overhead for the ~108 .py files | Only annotate the ~20 whitelisted methods; let `export_python_type_annotations=True` handle the rest |
-| 6 | License drift (MIT app shipped next to GPLv3 ERPNext) | Not a real issue: framework is MIT; connector app license is independent. Documented in `NOTICE` |
-| 7 | Hard-coded WIP location convention | Made configurable via `Frepple Settings.wip_location_name` |
-| 8 | The `frepple_integration` flag auto-syncs status — could fire in unexpected orders | Out of scope for migration; note as a Phase 7 hardening item |
-| 9 | JWT secret drift between Frepple Settings and frepple container | Phase 0.5.3 stores both; Phase 6.2 asserts they match |
-| 10 | `frame-ancestors` CSP blocking the iframe | Phase 0.5.1 compose sets `FREPPLE_CONTENT_SECURITY_POLICY` and `FREPPLE_X_FRAME_OPTIONS` |
-| 11 | Postgres container disk fills up over many plan runs | Named volume `frepple-pgdata` mounted; `make reset` wipes |
+Outcome column added at Phase 5. Risks 2, 9 and 10 remain open because only
+Phase 6 exercises a real frepple container.
+
+| # | Risk | Mitigation | Outcome |
+|---|---|---|---|
+| 1 | msf4-0 repo deleted or significantly evolved | Phase 0 step 1 fails fast. Backup: ask user for internal fork | Closed — cloned fine, attributed in `NOTICE` |
+| 2 | frepple 9.17 REST API contract differs from 2022 source code | Phase 6 E2E catches it (real frepple, not mocks) | **Open** — only the `/api/runplan/` path change is confirmed so far |
+| 3 | v14 user data on existing customer sites | Greenfield on `test.localhost`. Forward-compatible `patches.txt` | Closed — no patch needed |
+| 4 | ERPNext v17 field renames (`Item.valuation_rate`, `Bin.actual_qty`, `BOM.time_in_mins`, `Workstation`) | Audit per field mapping in Phase 2 | Closed — but the audit missed three aliases; Phase 4 tests caught them (M1) |
+| 5 | Type-annotation overhead for the ~108 .py files | Only annotate the ~20 whitelisted methods | Closed — no friction |
+| 6 | License drift (MIT app next to GPLv3 ERPNext) | Framework is MIT; connector license independent. Documented in `NOTICE` | Closed |
+| 7 | Hard-coded WIP location convention | Made configurable via `Frepple Settings.wip_location_name` | Closed |
+| 8 | The `frepple_integration` flag auto-syncs status — could fire in unexpected orders | Out of scope for migration; Phase 7 hardening item | Deferred to Phase 7 |
+| 9 | JWT secret drift between Frepple Settings and frepple container | Phase 0.5.3 stores both; Phase 6.2 asserts they match | **Open** — unit-tested against the settings secret only |
+| 10 | `frame-ancestors` CSP blocking the iframe | Phase 0.5.1 compose sets `FREPPLE_CONTENT_SECURITY_POLICY` and `FREPPLE_X_FRAME_OPTIONS` | **Open** — never rendered in a real browser yet |
+| 11 | Postgres container disk fills up over many plan runs | Named volume `frepple-pgdata`; `make reset` wipes | Closed |
 
 ---
 
@@ -361,69 +383,71 @@ Stand up ERPNext fixtures (1 SO → 1 WO + 1 PO). Run the full export → plan �
 
 ## 12. Estimated effort
 
-| Phase | Effort | Risk | Note |
-|---|---|---|---|
-| 0 — Repository setup | 0.5 day | Low | One git clone |
-| **0.5 — frepple Docker install** | **0.5 day** | **Low** | **New vs prior plan: enables real testing** |
-| 1 — Tracer bullet (Settings + iframe) | 2-3 days | Medium | Highest learning value per hour |
-| 2 — Bulk doctype copy | 3-4 days | Low | Mechanical once Ph1 patterns are set |
-| 3 — Desk pages | 1 day | Low | Reuses `get_iframe_url` helper |
-| 4 — Tests + CI + docs | 2-3 days | Medium | Real tests catch real bugs |
-| 5 — Spec + handoff | 0.5 day | Low | This document update |
-| **6 — E2E two-way test** | **2 days** | **Medium** | **New vs prior plan: real frepple + real bench** |
-| **Total** | **11-15 working days** | Medium | |
+Phases 0–5 are complete on `feat/migrate-v17`; the table below carries the
+original estimate next to what the phase actually cost.
 
-If you want to compress, the high-leverage shortcuts are:
-- Skip Phase 4 unit tests for entities you've already validated in Phase 6 E2E.
-- Run Phase 6 E2E against `responses`-mocks instead of the real frepple container (cuts Phase 0.5). Not recommended — Phase 6 is the only place that catches the JWT + CSP issues.
+| Phase | Estimate | Actual | Status | Note |
+|---|---|---|---|---|
+| 0 — Repository setup | 0.5 day | 0.5 day | done | One git clone |
+| **0.5 — frepple Docker install** | **0.5 day** | **0.5 day** | **done** | **Enabled real testing** |
+| 1 — Tracer bullet (Settings + iframe) | 2-3 days | ~1 day | done | Tracer bullet paid off — B6/B7 turned out to be non-issues |
+| 2 — Bulk doctype copy | 3-4 days | ~1 day | done | Scripted via `scripts/migrate_phase2.sh`, not hand-edited |
+| 3 — Desk pages | 1 day | ~0.5 day | done | Reuses the shared `sign_jwt_url` helper |
+| 4 — Tests + CI + docs | 2-3 days | ~1.5 days | done | Real tests caught 3 real bugs (M1–M3) |
+| 5 — Spec + handoff | 0.5 day | ~0.5 day | done | This document update; caught M4 |
+| **6 — E2E two-way test** | **2 days** | — | **pending** | **Real frepple + real bench** |
+| **Total** | **11-15 days** | **~5.5 days + Ph6** | | Estimates were conservative; scripting Phase 2 was the big saving |
+
+The two compression shortcuts floated before Phase 4 (skip unit tests for
+E2E-covered entities; mock Phase 6 instead of running real frepple) both look
+like bad trades in hindsight — the Phase 4 unit tests found four bugs that an
+E2E happy path would not have isolated.
 
 ---
 
-## 13. Quick reference — files to change
+## 13. File inventory — as shipped (Phases 0–5)
+
+This is the state of `feat/migrate-v17` at the end of Phase 5, not a to-do
+list. 105 `.py` files, 36 `.js`, 36 `.json` (excluding `__pycache__`).
 
 ```
 fact_frepple/
-  __init__.py                          bump version
-  hooks.py                             (existing scaffold; no changes)
+  hooks.py                             scaffold; unchanged
+  patches.txt                          scaffolded, no v14→v17 patches needed
   config/
-    desktop.py                         verify tile still works
-    docs.py                            no change
-    frepple.py                         module refs Frepple → Fact Frepple
+    desktop.py  docs.py  frepple.py    module refs Frepple → Fact Frepple
   fact_frepple/
-    doctype/
-      frepple_settings/
-        frepple_settings.py            [P1] imports, post_request, post methods, logger; add wip_location_name field
-        frepple_settings.json          [P2] sort_field, sort_order; new wip_location_name field
-      frepple_custom_page_settings/
-        frepple_custom_page_settings.py   [P1] REWRITE get_iframe_url to JWT (F14)
-        frepple_custom_page_settings.json [P2] sort
-      frepple_data_export/
-        frepple_data_export.py         [P2] imports, post_request, post methods, logger, type annotations
-        frepple_data_export.json       [P2] sort
-      frepple_integration_data_fetching/
-        frepple_integration_data_fetching.py   [P2] imports, commit, logger, audit queries, type annotations
-        frepple_integration_data_fetching.json [P2] sort
-      <all other 25 doctypes>          [P2] add sort_field + sort_order to JSON; module ref Frepple → Fact Frepple
+    doctype/                           29 DocTypes, each with a real test_*.py
+      frepple_settings/                + wip_location_name field (B11)
+      frepple_custom_page_settings/    get_iframe_url → JWT (B9/F14)
+      frepple_data_export/             export_<entity>() — responses-tested
+      frepple_integration_data_fetching/  fetch_* — SQL-router-tested
+      frepple_run_plan/                POSTs /api/runplan/ (was /execute/api/runplan/)
+      <24 mirror DocTypes>             sort_field + sort_order + module ref
     page/
-      frepple_custom_page/
-        frepple_custom_page.js         [P1] verify form hooks still work (no rewrite needed)
-      <other 5 pages>                   [P3] same pattern as frepple_custom_page
+      _iframe.py                       shared sign_jwt_url helper (F14)
+      test_iframe_helper.py            4 tests incl. deterministic exp clock test
+      frepple_custom_page/             Phase 1
+      demand_page/  manufacturing_order_page/
+      purchase_order_page/  resource_report_page/
+      supply_path_page/                Phase 3 — all delegate to _iframe
+    workspace/fact_frepple/
+      fact_frepple.json                v17 Workspace JSON, 10 sections
 
-NEW (added by this migration):
-  specs/migrate-v17.md                 the operational spec — committed first
-  docker/
-    frepple.compose.yaml               Phase 0.5 — frepple + postgres side-car
-    Makefile                            up/down/reset/logs
-    README.md                           bring-up instructions
-  scripts/
-    e2e_setup.sh                       Phase 6 — create ERPNext fixtures
-    e2e_run.sh                         Phase 6 — invoke the E2E test
-  patches.txt                          already scaffolded; add v14→v17 migration patches if needed
-  fact_frepple/tests/
-    unit/test_*.py                     Phase 4 — real unit tests (5 files)
-    e2e/test_*.py                      Phase 6 — E2E tests (2 files)
+Repo root:
+  specs/migrate-v17.md                 the operational spec
+  ANALYSIS_AND_MIGRATION_PLAN.md       this document
+  docker/                              frepple.compose.yaml + Makefile + README
+  scripts/migrate_phase2.sh            idempotent Phase 2 copy + transform
+  .github/workflows/ci.yml             bench run-tests
+  .github/workflows/linter.yml         ruff + prettier + pip-audit
+  NOTICE                               msf4-0 attribution + GPLv3 chain
+  pyproject.toml                       + responses~=0.25.0
+
+Still to come (Phase 6):
+  scripts/e2e_setup.sh  scripts/e2e_run.sh
+  fact_frepple/tests/e2e/test_*.py
   fact_frepple/commands/__init__.py    bench fact-frepple e2e runner
-  NOTICE                                msf4-0 attribution
 ```
 
 ---

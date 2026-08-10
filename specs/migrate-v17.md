@@ -282,6 +282,26 @@ Update `ANALYSIS_AND_MIGRATION_PLAN.md` so its §8 (v16 breaks), §12 (effort), 
 
 **Acceptance:** PR merged to `dev`; promotion to `pre-pro` and `main` follows the AGENTS.md chain.
 
+**Status (2026-08-10):** doc reconciliation done on `feat/migrate-v17`; PR to
+`dev` pending. `ANALYSIS_AND_MIGRATION_PLAN.md` §8 now records that every
+B-item and soft issue is resolved (verified: 0 files with `"module": "Frepple"`,
+0 `unicode_literals`/`get_request_session` imports, 29/29 JSONs with
+`sort_field`), plus a new "Bugs found during migration" table (M1–M4). §10
+gains an outcome column — risks 2, 9, 10 stay open because only Phase 6 runs
+a real frepple. §12 carries actuals against estimates (~5.5 days vs 11–15
+estimated; scripting Phase 2 was the saving). §13 is now the as-shipped
+inventory rather than a to-do list.
+
+One bug surfaced in this phase. `sign_jwt_url` computed `exp` with
+`round(time.time())`, which rounds a fractional clock read *up* and put the
+token one second past a caller's `int(time.time()) + expiration` bound —
+`test_get_iframe_url_returns_signed_jwt_webtoken` failed 7 runs in 12.
+Fixed by truncating with `int()` (`246b327`). The existing
+`test_iframe_helper` assertion covering this was vacuous
+(`assertAlmostEqual(exp, exp, delta=0)`); replaced with a patched-clock test
+that pins `exp == 1600` for `time.time() == 1000.9`, verified to fail before
+the fix and pass after. Suite is 37 tests, green across 5 consecutive runs.
+
 ### Phase 6 — End-to-end two-way transfer test
 
 This is the proof that the whole thing actually works against a real frepple.
