@@ -81,7 +81,7 @@ ERPNext-Frepple-Integration/
             └── supply_path_page/
 ```
 
-**240 files** total: 108 .py, 42 .js, 37 .json, plus LICENSE / README / MANIFEST.in / requirements.txt / setup.py.
+**194 files** total (verified `git ls-files` against `msf4-0/ERPNext-Frepple-Integration` HEAD `60d2d9f`, 2026-08-10): 108 .py, 42 .js, 37 .json, plus LICENSE / README.md / MANIFEST.in / requirements.txt / setup.py / .gitignore. Earlier draft overcounted at 240; the source has 30 doctype folders (29 in `doctype/` + the controller `frepple_run_plan` and the `_page` DocTypes are inside `doctype/`, not `page/`) and 7 page modules under `page/` (the 6 functional ones — `demand_page`, `frepple_custom_page`, `manufacturing_order_page`, `purchase_order_page`, `resource_report_page`, `supply_path_page` — plus the debug `frepple_test_page` which the spec treats as out-of-scope).
 
 ---
 
