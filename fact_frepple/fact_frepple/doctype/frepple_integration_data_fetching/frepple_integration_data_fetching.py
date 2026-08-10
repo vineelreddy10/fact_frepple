@@ -97,14 +97,17 @@ def fetch_items():
 			new_item = frappe.new_doc("Frepple Item")
 			new_item.item = item.item_code
 			new_item.description = item.item_name
-			new_item.uom = item.stock_uom
-			new_item.cost = item.valuation_rate
-			new_item.item_owner = item.item_group
+			# v17 — source uses uom/cost/item_owner, but the v17 Frepple Item DocType
+			# exposes them as stock_uom/valuation_rate/item_group (Phase 2 audit
+			# missed this alias).
+			new_item.stock_uom = item.stock_uom
+			new_item.valuation_rate = item.valuation_rate
+			new_item.item_group = item.item_group
 			new_item.insert()
-		else:#Update 
+		else:#Update
 			frappe.db.set_value('Frepple Item', item.item_code, {
-				'cost':item.valuation_rate,
-			}) 
+				'valuation_rate': item.valuation_rate,
+			})
 
 def fetch_customers():
 	customers = frappe.db.sql("""SELECT name, customer_group, customer_type FROM `tabCustomer`""",as_dict=1)

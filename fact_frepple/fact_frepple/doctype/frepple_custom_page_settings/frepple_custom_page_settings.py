@@ -24,7 +24,10 @@ def get_iframe_url(page_name: str) -> dict[str, Any]:
 			doc.url,
 			user=doc.user,
 			navbar=bool(doc.show_navigation_bar),
-			expiration=doc.expiration,
+			# v17 — DocType field ``expiration`` is documented as "in minutes"
+			# but ``sign_jwt_url`` consumes seconds. Convert here so the JWT
+			# lifetime matches the user's intent (Phase 4 test exposed the gap).
+			expiration=doc.expiration * 60,
 		),
 	}
 
