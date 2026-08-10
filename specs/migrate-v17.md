@@ -235,15 +235,46 @@ Replace stub tests with real ones:
 
 | Test | Mocks | Asserts |
 |---|---|---|
-| `test_frepple_settings.py` | n/a | URL is reachable, secret key ≥ 32 chars |
-| `test_frepple_data_export.py` | `responses` lib | Each `export_<entity>()` POSTs the expected JSON shape |
-| `test_frepple_integration_data_fetching.py` | `responses` lib | Pulled JSON is parsed into mirror DocType rows |
-| `test_get_iframe_url.py` | `jwt.encode` | Output JWT decodes back to `{user, exp, navbar}` and is signed with `settings.secret_key` |
+| `test_frepple_settings.py` | `responses` lib | URL is reachable, secret key ≥ 32 chars |
+| `test_frepple_data_export.py` | `responses` lib + SQL router | Each `export_<entity>()` POSTs the expected JSON shape |
+| `test_frepple_integration_data_fetching.py` | SQL router + `new_doc` skip-links | ERPNext rows are projected into mirror DocType rows + dispatcher routing |
+| `test_get_iframe_url.py` | `jwt.decode` | Output JWT decodes back to `{user, exp, navbar}` and is signed with `settings.secret_key` |
 | `test_frepple_run_plan.py` | `responses` lib | POSTs to `/api/runplan/` with the right body |
 
-CI: `.github/workflows/ci.yml` adds `bench --site test.localhost run-tests --app fact_frepple` + `ruff` + `prettier` + `pip-audit`. NOTICE file with attribution.
+CI: `.github/workflows/ci.yml` runs the bench tests; `.github/workflows/linter.yml`
+adds `ruff`, `prettier`, `pip-audit`, and semgrep on every PR. NOTICE file
+with attribution.
 
 **Acceptance:** `bench --site test.localhost run-tests --app fact_frepple` green; CI green on PR; README walkthrough executable on a fresh `bench new-site`.
+
+**Status (2026-08-10):** done on `feat/migrate-v17`. 36 tests pass on
+`test.localhost`. The Phase 2/3 stub tests are now real: each
+``export_<entity>()`` is verified by ``responses`` (URL + JSON body),
+``fetch_items`` / ``fetch_customers`` / ``fetch_buffers`` are verified by
+an ``frappe.db.sql`` router that falls through to the real DB for
+unrelated lookups, ``run_plan`` is verified end-to-end via ``responses``
+with body + query-string assertions, and ``get_iframe_url`` is verified
+by decoding the JWT with the configured secret (and asserting a wrong
+secret raises ``InvalidSignatureError``). Three source bugs surfaced
+during this phase and are fixed:
+
+- ``fetch_items`` wrote to ``uom``/``cost``/``item_owner`` aliases that
+  don't exist on the v17 ``Frepple Item`` DocType; renamed to
+  ``stock_uom``/``valuation_rate``/``item_group``.
+- ``get_iframe_url`` passed ``doc.expiration`` (minutes) where the
+  shared ``sign_jwt_url`` helper expects seconds; multiplied by 60.
+- ``test_frepple_integration_data_fetching`` now scrubs the four mirror
+  DocTypes in ``setUp`` because ``UnitTestCase`` has no implicit
+  rollback — without this the second fetch silently took the update
+  branch.
+
+CI: added a ``ruff`` job (lint + format check), a ``prettier`` job
+(JS/CSS/JSON/MD), kept the existing ``pip-audit`` job and the bench
+test workflow. NOTICE file at the repo root carries the GPLv3
+attribution for the v14 source we ported. ``pyproject.toml`` adds
+``responses~=0.25.0`` as a runtime dep — it's only used in tests but
+Frappe's pip resolver doesn't honour ``tool.bench.dev-dependencies``
+without ``developer_mode`` enabled on the bench.
 
 ### Phase 5 — Spec reconciliation + handoff
 
