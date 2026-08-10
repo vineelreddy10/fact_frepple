@@ -7,8 +7,7 @@ from typing import Any
 import frappe
 from frappe.model.document import Document
 
-import jwt
-import time
+from fact_frepple.fact_frepple.page._iframe import sign_jwt_url
 
 
 class FreppleCustomPageSettings(Document):
@@ -18,26 +17,18 @@ class FreppleCustomPageSettings(Document):
 @frappe.whitelist()
 def get_iframe_url(page_name: str) -> dict[str, Any]:
 	doc = frappe.get_doc("Frepple Custom Page Settings", page_name)
-	doc_2 = frappe.get_doc("Frepple Settings")
-
-	# F14: PyJWT 2.x returns str directly; the v14 source called .decode("ascii").
-	webtoken = jwt.encode(
-		{
-			"exp": round(time.time()) + doc.expiration,
-			"user": doc.user,
-			"navbar": bool(doc.show_navigation_bar),
-		},
-		doc_2.secret_key,
-		algorithm="HS256",
-	)
 
 	return {
 		"iframeHeight": doc.iframe_height,
-		"URL": doc.url + "?webtoken=" + webtoken,
+		"URL": sign_jwt_url(
+			doc.url,
+			user=doc.user,
+			navbar=bool(doc.show_navigation_bar),
+			expiration=doc.expiration,
+		),
 	}
 
 
 @frappe.whitelist()
 def get_secret_key() -> str:
-	doc_2 = frappe.get_doc("Frepple Settings")
-	return doc_2.secret_key
+	return frappe.get_single("Frepple Settings").secret_key
