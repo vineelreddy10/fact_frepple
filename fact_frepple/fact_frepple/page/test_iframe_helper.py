@@ -3,6 +3,9 @@
 # For license information, please see license.txt
 """Unit tests for the shared ``sign_jwt_url`` helper."""
 
+import time
+from unittest.mock import patch
+
 import frappe
 import jwt
 from frappe.tests import UnitTestCase
@@ -40,8 +43,31 @@ class TestIframeHelper(UnitTestCase):
 		decoded = jwt.decode(token, "shared-helper-secret", algorithms=["HS256"])
 		self.assertEqual(decoded["user"], "admin")
 		self.assertFalse(decoded["navbar"])
-		# 600s lifetime → exp within ±5s of now+600
-		self.assertAlmostEqual(decoded["exp"], decoded["exp"], delta=0)
+		self.assertLessEqual(decoded["exp"], int(time.time()) + 600)
+
+	def test_exp_truncates_subsecond_now(self):
+		"""``exp`` must be ``int(now) + expiration`` — never rounded up.
+
+		Rounding a fractional ``time.time()`` up puts ``exp`` one second beyond
+		``int(time.time()) + expiration``, which trips any caller that bounds
+		the token lifetime against a truncated clock read.
+		"""
+		with patch("fact_frepple.fact_frepple.page._iframe.time.time", return_value=1000.9):
+			url = sign_jwt_url(
+				"http://localhost:9000/x/",
+				user="admin",
+				navbar=False,
+				expiration=600,
+				secret_key="override-secret",
+			)
+		token = url.split("webtoken=", 1)[1]
+		decoded = jwt.decode(
+			token,
+			"override-secret",
+			algorithms=["HS256"],
+			options={"verify_exp": False},
+		)
+		self.assertEqual(decoded["exp"], 1600)
 
 	def test_appends_with_ampersand_when_url_already_has_query(self):
 		url = sign_jwt_url(

@@ -58,7 +58,9 @@ def sign_jwt_url(
 
 	webtoken = jwt.encode(
 		{
-			"exp": round(time.time()) + int(expiration),
+			# Truncate rather than round: rounding up can push ``exp`` a second
+			# past a caller's ``int(time.time()) + expiration`` upper bound.
+			"exp": int(time.time()) + int(expiration),
 			"user": user,
 			"navbar": bool(navbar),
 		},
