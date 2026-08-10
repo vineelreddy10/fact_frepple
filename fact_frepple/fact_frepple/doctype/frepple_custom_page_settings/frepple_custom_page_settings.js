@@ -1,10 +1,9 @@
 // Copyright (c) 2022, Drayang Chua and contributors
 // For license information, please see license.txt
-// Ported to fact_frepple on v17; original at msf4-0/ERPNext-Frepple-Integration.
 
 frappe.ui.form.on('Frepple Custom Page Settings', {
 	refresh:function(frm){
-
+		
 		frm.call({
 			method:"get_secret_key",
 			callback:function(r){

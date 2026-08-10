@@ -57,8 +57,8 @@
    "reqd": 1
   },
   {
-   "default": "http://localhost:9000",
-   "description": "Url of the Frepple page to be embedded. (For example, http://localhost:9000/data/input/operationplanresource/)",
+   "default": "http://172.17.0.1:5000",
+   "description": "Url of the Frepple page to be embedded. (For example, http://172.17.0.1:5000/data/input/operationplanresource/)",
    "fieldname": "url",
    "fieldtype": "Data",
    "in_list_view": 1,

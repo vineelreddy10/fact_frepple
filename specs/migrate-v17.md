@@ -195,6 +195,16 @@ Mechanical copy of 27 remaining DocTypes + 2 controllers (`Frepple Data Export`,
 
 **Acceptance:** all 29 DocTypes visible in desk list views; export controller POSTs JSON to a mocked endpoint; fetch controller parses a canned response.
 
+**Status (2026-08-10):** done on `feat/migrate-v17`. 24 DocTypes registered in
+the desk (`module: Fact Frepple`), `bench --site test.localhost migrate` is
+clean, `bench --site test.localhost run-tests --app fact_frepple` runs 4 unit
+tests (export URL builder + R8 WIP-prefix helper) and reports OK. The 22 new
+doctypes are mirror-only stubs awaiting the Phase 4 real-test rewrite. Phase 3
+pages still pending.
+
+Script that did the copy + transforms: `scripts/migrate_phase2.sh`; idempotent
+via the `.fact_frepple_migrated` marker (added to `.gitignore`).
+
 ### Phase 3 — Desk pages and Frepple Run Plan
 
 5 remaining iframe pages + `Frepple Run Plan` DocType + workspace + desktop + docs config. All iframe pages call the same `get_iframe_url(view_name)` helper.

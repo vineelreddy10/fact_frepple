@@ -1,14 +1,14 @@
 # Copyright (c) 2022, Drayang Chua and contributors
-# For license information, please see license.txt
 # Ported to fact_frepple on v17; original at msf4-0/ERPNext-Frepple-Integration.
+# For license information, please see license.txt
 
 from typing import Any
 
 import frappe
+from frappe.model.document import Document
+
 import jwt
 import time
-
-from frappe.model.document import Document
 
 
 class FreppleCustomPageSettings(Document):
@@ -39,4 +39,5 @@ def get_iframe_url(page_name: str) -> dict[str, Any]:
 
 @frappe.whitelist()
 def get_secret_key() -> str:
-	return frappe.get_doc("Frepple Settings").secret_key
+	doc_2 = frappe.get_doc("Frepple Settings")
+	return doc_2.secret_key
