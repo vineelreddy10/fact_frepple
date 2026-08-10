@@ -211,6 +211,24 @@ via the `.fact_frepple_migrated` marker (added to `.gitignore`).
 
 **Acceptance:** all 6 desk pages render; workspace shows the 9 sections; clicking "Run Plan" on `Frepple Run Plan` triggers `/api/runplan/` against a mocked endpoint.
 
+**Status (2026-08-10):** done on `feat/migrate-v17`. The 5 remaining iframe
+pages (`demand-page`, `manufacturing-order-page`, `purchase-order-page`,
+`resource-report-page`, `supply-path-page`) and their single-row DocTypes
+are migrated under `fact_frepple/fact_frepple/{page,doctype}/...`. The JWT
+signing logic that lived inside the v14 source's per-page `get_iframe_url()`
+is extracted into a single helper `fact_frepple.fact_frepple.page._iframe.sign_jwt_url`;
+`Frepple Custom Page Settings.get_iframe_url()` and the 5 new helpers
+all delegate to it (F14). Workspace is shipped as a v17 Workspace JSON
+DocType at `fact_frepple/fact_frepple/workspace/fact_frepple/fact_frepple.json`
+with the 10 source sections (Sales, Inventory, Capacity, Purchasing,
+Manufacturing, Additional Data, Settings, Result, Report, Customization).
+`Frepple Run Plan.run_plan()` rewritten for the v17 frepple endpoint
+`/api/runplan/` (was `/execute/api/runplan/`), `print()` calls replaced
+with `frappe.logger().info(...)` (F5). `bench --site test.localhost migrate`
+is clean; `bench --site test.localhost run-tests --app fact_frepple`
+runs 13 unit tests (10 existing + 3 for the new shared helper) and reports
+OK. Phase 4 real-test rewrite still pending.
+
 ### Phase 4 — Tests, CI, deployment
 
 Replace stub tests with real ones:
