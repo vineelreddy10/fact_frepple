@@ -7,6 +7,11 @@ import frappe
 import json
 from frappe.model.document import Document
 
+
+# F5: logger replaces the v14 ad-hoc print() statements.
+_logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
+
+
 class FreppleBuffer(Document):
 	pass
 
@@ -21,7 +26,7 @@ def update_frepple_buffer(doc: str) -> None:
 
 		# Do condition check
 
-		print(bin)
+		_logger.info(f"{bin}")
 		buffers = frappe.db.sql(
 			"""
 			SELECT item,location,name

@@ -8,6 +8,11 @@ import json
 from frappe.model.document import Document
 
 from fact_frepple.fact_frepple.doctype.frepple_integration_data_fetching.frepple_integration_data_fetching import so_status_e2f
+
+
+# F5: logger replaces the v14 ad-hoc print() statements.
+_logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
+
 class FreppleDemand(Document):
 	pass
 
@@ -18,7 +23,7 @@ def update_frepple_demand_status(doc: str) -> None:
 	if (frappe.get_doc("Frepple Settings").frepple_integration) and doc["docstatus"]:
 		erpnext_so = frappe.get_doc("Sales Order",doc["name"]) #ERPNext sales order
 
-		print(erpnext_so)
+		_logger.info(f"{erpnext_so}")
 		sos = frappe.db.sql(
 			"""
 			SELECT name,so_owner
@@ -29,5 +34,5 @@ def update_frepple_demand_status(doc: str) -> None:
 
 		for so in sos:
 			frappe.db.set_value('Frepple Demand', so.name, 'status',so_status_e2f(erpnext_so.status)) #Update the status
-			print(so_status_e2f(erpnext_so.status))
+			_logger.info(f"{so_status_e2f(erpnext_so.status)}")
 

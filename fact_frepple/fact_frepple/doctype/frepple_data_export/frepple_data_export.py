@@ -17,6 +17,15 @@ from frappe.integrations.utils import make_get_request, make_post_request, creat
 import requests
 from requests.structures import CaseInsensitiveDict
 
+
+# F5: logger replaces the v14 ad-hoc print() statements.
+_logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
+
+# frepple 9.x requires `effective_start` on an itemsupplier record. ERPNext has
+# no equivalent, so every sourcing link is effective from this anchor date.
+ITEMSUPPLIER_EFFECTIVE_START = "2000-01-01 00:00:00"
+
+
 class FreppleDataExport(Document):
 	pass
 
@@ -115,7 +124,7 @@ def get_frepple_params(api: str | None = None, filter: str | None = None) -> tup
 		'Content-type': 'application/json; charset=UTF-8',
 		'Authorization': frepple_settings.authorization_header,
 	}
-	print(url+ "-------------------------------------------------------------------------")
+	_logger.info(f"{url+ "-------------------------------------------------------------------------"}")
 
 	return url,headers
 
@@ -153,8 +162,8 @@ def export_calendar_buckets():
 	)
 
 	for calendar_bucket in calendar_buckets:
-		print(calendar_bucket)
-		print(calendar_bucket.start_datetime.isoformat())
+		_logger.info(f"{calendar_bucket}")
+		_logger.info(f"{calendar_bucket.start_datetime.isoformat()}")
 		data = json.dumps({
 			"calendar": calendar_bucket.calendar,
 			"startdate": calendar_bucket.start_datetime.isoformat(),
@@ -227,7 +236,7 @@ def export_locations():
 	locations = frappe.db.sql("""SELECT warehouse, location_owner, available FROM `tabFrepple Location`""",as_dict=1)
 	
 	for location in locations:
-		print(location)
+		_logger.info(f"{location}")
 
 		if location.available:
 			available = location.available
@@ -251,7 +260,7 @@ def export_locations():
 
 		# If the location is a parent
 		else:
-			print(available)
+			_logger.info(f"{available}")
 			data = json.dumps({
 				"name": location.warehouse,
 				"available":available
@@ -290,7 +299,7 @@ def export_item_distribution():
 	as_dict=1)
 
 	for distribution in distributions:
-		print(distribution)
+		_logger.info(f"{distribution}")
 		data = json.dumps({
 			"item": distribution.item,
 			"origin":distribution.origin,
@@ -311,7 +320,7 @@ def export_resources():
 		""",as_dict=1)
 
 	for resource in resources:
-		print(resource)
+		_logger.info(f"{resource}")
 	# For human resource
 		'''Add a null operator or workstation to frepple to use it as the owner to ensure no request error happen'''
 		data = json.dumps({
@@ -343,7 +352,7 @@ def export_skills():
 
 	skills = frappe.db.sql("""SELECT skill FROM `tabFrepple Skill`""",as_dict=1)
 	for skill in skills:
-		print(skill)
+		_logger.info(f"{skill}")
 		data = json.dumps({
 			"name": skill.skill,
 		})
@@ -405,14 +414,18 @@ def export_item_suppliers():
 		# else:
 		# 	time = "null"
 
-		print(item_supplier)
-		# print(str(item_supplier.day)+" "+str(item_supplier.time.time()))
+		_logger.info(f"{item_supplier}")
 		data = json.dumps({
 			"supplier":item_supplier.supplier,
 			"item":item_supplier.item,
 			"cost":item_supplier.supplier_cost,
-			"leadtime":str(item_supplier.day)+" "+str(item_supplier.time.time())
-			# "duration_per":(datetime(1900,1,1,0,0,0)+ operation.duration_per_unit).time(), 
+			"leadtime":str(item_supplier.day)+" "+str(item_supplier.time.time()),
+			# frepple 9.x rejects an itemsupplier without effective_start
+			# ("This field is required"); the v14 payload predates that. The
+			# sourcing link has no start date in ERPNext, so anchor it in the
+			# far past — a future date would silently exclude the supplier
+			# from the plan instead of erroring.
+			"effective_start": ITEMSUPPLIER_EFFECTIVE_START,
 		})
 
 		output = make_post_request(url,headers=headers, data=data)
@@ -430,7 +443,7 @@ def export_operations():
 		""",
 		as_dict=1)
 	
-	print(routing_operations)
+	_logger.info(f"{routing_operations}")
 	for operation in routing_operations:
 	
 		if operation.duration:
@@ -461,7 +474,7 @@ def export_operations():
 	
 	for operation in time_per_operations:
 
-		print(type(operation.duration_per_unit))
+		_logger.info(f"{type(operation.duration_per_unit)}")
 		if operation.duration:
 			duration = str(operation.duration.time())
 		else:
@@ -492,7 +505,7 @@ def export_operation_materials():
 	as_dict=1)
 	
 	for material in materials:
-		print(material)
+		_logger.info(f"{material}")
 		data = json.dumps({
 			"operation":material.operation,
 			"item":material.item,
@@ -515,7 +528,7 @@ def export_operation_resources():
 	as_dict=1)
 
 	for resource in employee_resources:
-		print(resource)
+		_logger.info(f"{resource}")
 		# if HUman Resource, then we let resource = "Operator"
 		data = json.dumps({
 			"operation":resource.operation,
@@ -534,7 +547,7 @@ def export_operation_resources():
 	as_dict=1)
 
 	for resource in workstation_resources:
-		print(resource)
+		_logger.info(f"{resource}")
 		data = json.dumps({
 			"operation":resource.operation,
 			"resource":resource.resource,
@@ -556,7 +569,7 @@ def export_sales_orders():
 
 		
 	for sales_order in sales_orders:
-		print(sales_order)
+		_logger.info(f"{sales_order}")
 		data = json.dumps({
 			"name": sales_order.name,
 			"description": sales_order.item_name + " ordered by " + sales_order.customer, #default

@@ -295,3 +295,8 @@ require_type_annotated_api_methods = True
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+
+# Bench CLI
+# ---------
+# Exposes `bench --site <site> fact-frepple-e2e` (Phase 6 end-to-end runner).
+commands = "fact_frepple.commands.commands"

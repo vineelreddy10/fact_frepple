@@ -6,8 +6,9 @@ Local frepple server for `fact_frepple` integration testing.
 
 ```bash
 cd apps/fact_frepple/docker
-sudo make up        # docker compose -f frepple.compose.yaml up -d
-sudo make logs      # tail logs; wait for "Starting web server"
+sudo make up             # docker compose -f frepple.compose.yaml up -d
+sudo make logs           # tail logs; wait for "Starting web server"
+sudo make configure-plan # REQUIRED — see "Persisting the plan" below
 ```
 
 First boot takes ~60-90s: entrypoint creates three databases
@@ -62,6 +63,58 @@ curl -i "http://localhost:9000/?webtoken=$TOKEN" | head -1
 
 A 200 here means the secret is correctly shared between the container
 and your shell — the same value will be valid in the Frappe iframe.
+
+## Persisting the plan (required)
+
+frepple defaults `plan.webservice` to `true`, which keeps the computed
+plan **in memory**. The connector reads results from the REST input
+tables (`/api/input/manufacturingorder/`, `/api/input/purchaseorder/`),
+so in that mode a plan run appears to succeed and imports nothing —
+`generate_result()` returns zero rows with no error anywhere. This cost
+a full debugging pass during Phase 6.
+
+There is no environment variable for it (the value lives in frepple's
+`common_parameter` table), so it must be set after every `make reset`:
+
+```bash
+sudo make configure-plan   # sets plan.webservice = false
+```
+
+## The task API is asynchronous
+
+`POST /execute/api/runplan/` **queues** a task and returns immediately:
+
+```json
+{"taskid": 5, "message": "Successfully launched task"}
+```
+
+Reading the plan before that task reaches `Done` returns the *previous*
+plan, or nothing at all. `run_plan()` returns the payload above; use
+`fact_frepple...frepple_run_plan.wait_for_task(taskid)` to block.
+
+Note the endpoint is `/execute/api/runplan/`, **not** `/api/runplan/` —
+the latter 302-redirects to the login page, so a plan silently never
+runs.
+
+## E2E credentials
+
+`bench fact-frepple-e2e` and the Phase 6 tests read their connection
+details from `site_config.json` rather than from `Frepple Settings`
+(the unit tests overwrite that singleton with fakes):
+
+```json
+"frepple_e2e": {
+  "url": "http://localhost:9000",
+  "username": "admin",
+  "password": "<your admin password>",
+  "secret_key": "<the container's SECRET_KEY>",
+  "wip_location_name": "Work In Progress"
+}
+```
+
+`FREPPLE_E2E_URL` / `_USERNAME` / `_PASSWORD` / `_SECRET_KEY` environment
+variables override the site config, so CI never has to write secrets to
+disk.
 
 ## Reset (nuke volumes)
 

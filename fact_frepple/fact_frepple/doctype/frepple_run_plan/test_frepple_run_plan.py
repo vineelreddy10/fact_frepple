@@ -4,7 +4,7 @@
 # See license.txt
 """Phase 4 acceptance — ``Frepple Run Plan`` DocType.
 
-``run_plan`` POSTs to frepple's ``/api/runplan/`` endpoint to kick off a
+``run_plan`` POSTs to frepple's ``/execute/api/runplan/`` task endpoint to queue a
 plan run. The Phase 3 unit tests verified the URL/query string with a
 ``unittest.mock.patch``; this module fires a real ``requests`` call through
 Frappe's ``make_post_request`` and verifies both the URL contract and the
@@ -30,7 +30,7 @@ def _basic_auth_url(path: str) -> str:
 
 
 class TestFreppleRunPlan(UnitTestCase):
-	"""Phase 4 acceptance — real ``/api/runplan/`` round-trip via ``responses``."""
+	"""Phase 4 acceptance — real ``/execute/api/runplan/`` round-trip via ``responses``."""
 
 	def setUp(self):
 		frappe.db.set_single_value(
@@ -51,7 +51,7 @@ class TestFreppleRunPlan(UnitTestCase):
 		"""Verifies URL path + constraint query-string translation end-to-end."""
 		responses.add(
 			responses.POST,
-			_basic_auth_url("/api/runplan/"),
+			_basic_auth_url("/execute/api/runplan/"),
 			status=200,
 			json={"ok": True},
 		)
@@ -69,9 +69,11 @@ class TestFreppleRunPlan(UnitTestCase):
 
 		self.assertEqual(len(responses.calls), 1)
 		request = responses.calls[0].request
-		# v17 — frepple 9.x dropped /execute/api/runplan/ in favor of /api/runplan/
-		self.assertIn("/api/runplan/", request.url)
-		self.assertNotIn("/execute/api/runplan/", request.url)
+		# The task API lives at /execute/api/runplan/. Phase 4 originally
+		# asserted the opposite (a bare /api/runplan/) and this mock happily
+		# confirmed it — the Phase 6 E2E showed that path 302s to the login
+		# page, so the plan never ran. Assert the real contract.
+		self.assertIn("/execute/api/runplan/", request.url)
 		# capacity(4) + lead_time(1) + constrained plantype(1)
 		self.assertIn("constraint=5", request.url)
 		self.assertIn("plantype=1", request.url)
@@ -81,7 +83,7 @@ class TestFreppleRunPlan(UnitTestCase):
 
 	@responses.activate
 	def test_run_plan_sends_post_with_no_body(self):
-		"""frepple's ``/api/runplan/`` reads everything from the query string.
+		"""frepple's ``/execute/api/runplan/`` reads everything from the query string.
 
 		The connector sends ``data=None`` (empty body) — verified here so a
 		future regression that accidentally attaches a JSON payload surfaces
@@ -90,7 +92,7 @@ class TestFreppleRunPlan(UnitTestCase):
 		"""
 		responses.add(
 			responses.POST,
-			_basic_auth_url("/api/runplan/"),
+			_basic_auth_url("/execute/api/runplan/"),
 			status=200,
 			json={"ok": True},
 		)
@@ -108,7 +110,7 @@ class TestFreppleRunPlan(UnitTestCase):
 
 		request = responses.calls[0].request
 		# body is either None or empty bytes depending on the Frappe/requests
-		# version — both are acceptable for /api/runplan/.
+		# version — both are acceptable for the task endpoint.
 		body = request.body
 		if body is not None:
 			self.assertIn(body, (b"", b"None"))
@@ -142,7 +144,7 @@ class TestFreppleRunPlan(UnitTestCase):
 			# The plan-run POST itself.
 			responses.add(
 				responses.POST,
-				_basic_auth_url("/api/runplan/"),
+				_basic_auth_url("/execute/api/runplan/"),
 				status=200,
 				json={"ok": True},
 			)
@@ -160,5 +162,5 @@ class TestFreppleRunPlan(UnitTestCase):
 		# export_purchase_orders ran at least once (sanity check).
 		self.assertTrue(mock_po.called)
 		# The plan-run POST happened — find it in the captured calls.
-		plan_calls = [c for c in responses.calls if "/api/runplan/" in c.request.url]
+		plan_calls = [c for c in responses.calls if "/execute/api/runplan/" in c.request.url]
 		self.assertEqual(len(plan_calls), 1)

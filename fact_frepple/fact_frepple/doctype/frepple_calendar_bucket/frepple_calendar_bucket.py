@@ -8,6 +8,11 @@ from frappe.model.document import Document
 from frappe import _
 
 
+# F5: logger replaces the v14 ad-hoc print() statements.
+_logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
+
+
+
 class FreppleCalendarBucket(Document):
 	
 	@frappe.whitelist()
@@ -26,7 +31,7 @@ class FreppleCalendarBucket(Document):
 			as_dict=1)
 			# condition check to prevent adding duplicate row 
 			for calendar_bucket in calendar_buckets:
-				print(calendar_bucket)
+				_logger.info(f"{calendar_bucket}")
 				if calendar_bucket.calendar_bucket == self.name:
 					exist = 1
 
@@ -68,7 +73,7 @@ class FreppleCalendarBucket(Document):
 			doc.name,as_dict=1)
 
 			for calendar_bucket in calendar_buckets:
-				print(calendar_bucket)
+				_logger.info(f"{calendar_bucket}")
 				if self.priority == calendar_bucket.priority:
 					duplicate = 1
 

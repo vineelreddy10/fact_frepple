@@ -27,11 +27,21 @@ _logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
 
 @frappe.whitelist()
 def run_plan(doc: str) -> dict:
-	"""POST to frepple ``/api/runplan/`` and return the raw response.
+	"""Launch a plan via frepple's task API and return the raw response.
 
-	The ``constraint``/``plantype``/``env`` query string matches the v9
-	``/api/runplan/`` contract (the v14 source used ``/execute/api/runplan/``,
-	which doesn't exist on frepple 9.x).
+	The endpoint is ``/execute/api/runplan/``. Phase 3 "modernised" this to
+	``/api/runplan/`` on the assumption that frepple 9 had moved it; the Phase
+	6 E2E proved otherwise — ``/api/runplan/`` 302-redirects to the login page,
+	so every plan silently did nothing. The v14 path was correct all along.
+
+	Planning is **asynchronous**: this returns as soon as the task is queued
+	(``{"taskid": N, "message": "Successfully launched task"}``). Callers that
+	need the results must wait for the task to reach ``Done`` before reading
+	``/api/input/manufacturingorder/`` — see ``wait_for_task``.
+
+	Note the frepple instance must have the ``plan.webservice`` parameter set
+	to ``false``, otherwise the plan is held in memory and never written to
+	the tables ``generate_result`` reads.
 	"""
 	doc = json.loads(doc)
 
@@ -60,7 +70,7 @@ def run_plan(doc: str) -> dict:
 	temp_url = settings.url.split("//")
 	url = (
 		f"http://{settings.username}:{settings.password}@{temp_url[1]}"
-		f"/api/runplan/?{query}"
+		f"/execute/api/runplan/?{query}"
 	)
 	_logger.info(f"run_plan → {url}")
 
@@ -74,6 +84,35 @@ def run_plan(doc: str) -> dict:
 	frappe.msgprint(msg="Plan has been run successfully.", title="Success")
 
 	return output
+
+
+def wait_for_task(taskid: int | str, timeout: int = 300, poll: int = 3) -> str:
+	"""Block until the frepple task reaches a terminal state; return its status.
+
+	``run_plan`` only queues the task. Reading the plan output before the task
+	finishes returns the *previous* plan (or nothing at all), which is what
+	made the first E2E run report zero manufacturing orders.
+	"""
+	import time
+
+	import requests
+
+	settings = frappe.get_doc("Frepple Settings")
+	auth = (settings.username, settings.password)
+	deadline = time.time() + timeout
+
+	while time.time() < deadline:
+		resp = requests.get(
+			f"{settings.url}/execute/api/status/?id={taskid}", auth=auth, timeout=30
+		)
+		resp.raise_for_status()
+		payload = resp.json()
+		status = (payload.get(str(taskid)) or {}).get("status")
+		if status in ("Done", "Failed", "Canceled"):
+			return status
+		time.sleep(poll)
+
+	raise TimeoutError(f"frepple task {taskid} did not finish within {timeout}s")
 
 
 @frappe.whitelist()
@@ -202,6 +241,18 @@ def import_purchase_order() -> list[dict]:
 
 def generate_purchase_order(data: list[dict]) -> None:
 	for i in data:
+		# frepple names the supplier "Unknown supplier" when an item has no
+		# sourcing path. That is not a real Supplier, so inserting it raises
+		# LinkValidationError and aborts the *entire* import — one unsourced
+		# raw material would discard every other planned purchase. Skip it and
+		# carry on (spec §6.4: log and continue).
+		if not frappe.db.exists("Frepple Supplier", i["supplier"]):
+			_logger.info(
+				f"generate_purchase_order skipped {i['reference']} for item {i['item']}: "
+				f"frepple supplier {i['supplier']!r} is not a mirrored Frepple Supplier"
+			)
+			continue
+
 		pos = frappe.db.sql(
 			"""
 			SELECT name, item, supplier

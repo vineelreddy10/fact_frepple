@@ -9,6 +9,11 @@ from frappe import _
 
 from frappe.model.document import Document
 
+
+# F5: logger replaces the v14 ad-hoc print() statements.
+_logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
+
+
 class FrepplePurchaseOrder(Document):
 	pass
 
@@ -77,7 +82,7 @@ def update_frepple_po_status(doc: str) -> None:
 
 			# print(mo[0])
 			frappe.db.set_value('Frepple Purchase Order', po.name, 'status',po_status_e2f(erpnext_po.status)) #Update the status
-			print(po_status_e2f(erpnext_po.status))
+			_logger.info(f"{po_status_e2f(erpnext_po.status)}")
 
 # CHeck the erpnext purchase order status and get its correspond frepple purchase status
 # ERPNExt -> Frepple

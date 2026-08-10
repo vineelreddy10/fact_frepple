@@ -8,6 +8,11 @@ import json
 from frappe import _
 from frappe.model.document import Document
 
+
+# F5: logger replaces the v14 ad-hoc print() statements.
+_logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
+
+
 class FreppleManufacturingOrder(Document):
 	pass
 
@@ -38,7 +43,7 @@ def generate_erp_wo_bulk(names: str) -> None:
 				new_doc.planned_end_date = mo.end_date
 				new_doc.sales_order = so_link
 				new_doc.insert()
-				print(new_doc.name)
+				_logger.info(f"{new_doc.name}")
 				mo.erpnext_wo = new_doc.name
 				frappe.db.set_value('Frepple Manufacturing Order', mo.name, 'erpnext_wo', new_doc.name)
 				
@@ -52,7 +57,7 @@ def generate_erp_wo_bulk(names: str) -> None:
 			new_doc.planned_end_date = mo.end_date
 			new_doc.sales_order = so_link
 			new_doc.insert()
-			print(new_doc.name)
+			_logger.info(f"{new_doc.name}")
 			mo.erpnext_wo = new_doc.name
 			frappe.db.set_value('Frepple Manufacturing Order', mo.name, 'erpnext_wo', new_doc.name)
 
@@ -93,7 +98,7 @@ def generate_erp_wo(doc: str) -> None:
 		new_doc.planned_end_date = mo.end_date
 		new_doc.sales_order = so_link
 		new_doc.insert()
-		print(new_doc.name)
+		_logger.info(f"{new_doc.name}")
 		mo.erpnext_wo = new_doc.name
 
 		frappe.db.set_value('Frepple Manufacturing Order', mo.name, 'erpnext_wo', new_doc.name)
@@ -112,7 +117,7 @@ def update_frepple_mo_status(doc: str) -> None:
 	doc = json.loads(doc)
 	if (frappe.get_doc("Frepple Settings").frepple_integration) and doc["docstatus"]:
 		wo = frappe.get_doc("Work Order",doc["name"]) #ERPNext work order
-		print(wo)
+		_logger.info(f"{wo}")
 		mos = frappe.db.sql(
 			"""
 			SELECT name,erpnext_wo
@@ -128,7 +133,7 @@ def update_frepple_mo_status(doc: str) -> None:
 
 			# print(mo[0])
 			frappe.db.set_value('Frepple Manufacturing Order', mo.name, 'status',mo_status_e2f(wo.status)) #Update the status
-			print(mo_status_e2f(wo.status))
+			_logger.info(f"{mo_status_e2f(wo.status)}")
 
 # CHeck the erpnext work order status and get its correspond frepple manufacturing order status
 # ERPNExt -> Frepple

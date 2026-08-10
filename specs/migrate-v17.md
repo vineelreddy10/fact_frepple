@@ -402,6 +402,52 @@ runs the full E2E. CI runs it nightly against `test.localhost`.
 
 **Acceptance:** the E2E script runs green from a cold `docker compose down -v && bench restart` start.
 
+**Status (2026-08-10):** done on `dev`. `bench --site test.localhost fact-frepple-e2e`
+runs 9 tests green, verified from a genuine cold start (`make reset` → `make up`
+→ fresh Postgres volume, new `SECRET_KEY`, empty frepple DB). One Sales Order
+for 10 × FG-001 produces exactly one Frepple Manufacturing Order (qty 10,
+pegged to the SO), one ERPNext Work Order, and one Frepple Purchase Order for
+RM-001 from SUPP-001.
+
+Layout differs slightly from §9 of this spec: the tests live in
+`fact_frepple/tests/e2e/` as `fixtures.py`, `helpers.py` and
+`test_e2e_two_way.py` (one module covering §6.3, §6.4 and §6.6) rather than
+separate `test_e2e_one_so.py` / `test_iframe_jwt.py` / `conftest.py` — there is
+no pytest in this stack, so a `conftest.py` would have been dead weight. The
+CLI is `bench fact-frepple-e2e` (hyphenated; `bench fact-frepple e2e` would
+require a command group for a single command).
+
+**Six bugs surfaced, all invisible to the Phase 4 mocks:**
+
+| # | Bug | Why the mocks missed it |
+|---|---|---|
+| E1 | `run_plan` POSTed to `/api/runplan/`, which 302-redirects to the login page — **no plan ever ran**. The v14 path `/execute/api/runplan/` was correct; Phase 3 "modernised" it on a wrong assumption and the Phase 4 `responses` test asserted the wrong URL, locking the bug in. | A mock returns 200 for whatever URL you register |
+| E2 | `fetch_data` called `fetch_item_suppliers()`, which was never ported from v14 → `NameError` on every run with that flag on. Implemented; it is also what gives frepple a sourcing path to plan a PO at all. | No test exercised the real `fetch_data` dispatch with all flags on |
+| E3 | `fetch_skills` / `fetch_resource_skills` query `tabSkill` and `tabEmployee Skill Map`, which ship with **hrms**, not erpnext → `ProgrammingError` on any site without hrms. Now guarded by a table-existence check. | The site the mocks ran against never executed the SQL |
+| E4 | frepple 9.x requires `effective_start` on `itemsupplier`; the v14 payload omits it → HTTP 400. | The mock accepted any JSON body |
+| E5 | frepple returns `"Unknown supplier"` for unsourced items; importing it raised `LinkValidationError` and **aborted the entire PO import**, discarding valid rows too. Now skipped with a log (§6.4 "log and continue"). | Mock fixtures only ever contained well-formed suppliers |
+| E6 | The Phase 4 unit tests overwrite the `Frepple Settings` singleton with fakes and never restore it, so the E2E inherited `secret_key = "phase3-test-secret"` and failed with a spurious "secret drift". E2E config now comes from `site_config.json` / `FREPPLE_E2E_*`. | Only shows up when both suites run in one process |
+
+**Two operational requirements the plan never mentioned:**
+
+- `plan.webservice` must be `false`. frepple's default keeps the plan in
+  memory, so the REST input tables the connector reads stay empty and a plan
+  run appears to succeed while importing nothing. There is no env var for it —
+  added as `make configure-plan`, required after every `make reset`.
+- `/execute/api/runplan/` is **asynchronous**; it returns `{"taskid": N}`. Reading
+  results before the task reaches `Done` returns the previous plan. Added
+  `wait_for_task()`; the E2E blocks on it.
+
+**Risks now closed:** R2/risk 2 (frepple 9.17 REST contract — E1, E4 and E5 were
+exactly this), R5/risk 9 (JWT secret drift — the E2E signs a token and asserts
+the real frepple returns 200, and that a wrong secret does not), R6/risk 10
+(CSP `frame-ancestors` — asserted against the live response header).
+
+Not covered: §6.5 status-sync round-trip (ERPNext WO submit → PATCH frepple;
+frepple PO receipt → ERPNext Purchase Receipt) is **not implemented**. It needs
+`update_frepple_mo_status` to be driven from a real doc submit and a Purchase
+Receipt path that does not exist in the connector yet. Carried to Phase 7.
+
 ---
 
 ## 6. v14 → v17 compatibility delta (F-table)
@@ -510,15 +556,15 @@ apps/fact_frepple/
 
 ## 10. Acceptance gates (per phase)
 
-| Phase | Pass criterion |
-|---|---|
-| 0.5 | `curl http://localhost:9000/` returns 200; basic-auth + JWT round-trip works |
-| 1 | Settings form loads; Custom Page iframe URL parses as valid JWT |
-| 2 | All 29 DocTypes visible in desk list views; export/fetch controllers mocked |
-| 3 | All 6 desk pages render; workspace shows 9 sections |
-| 4 | `bench --site test.localhost run-tests --app fact_frepple` green; CI green |
-| 5 | `ANALYSIS_AND_MIGRATION_PLAN.md` rewritten; PR merged to `dev` |
-| **6** | **`bench fact-frepple e2e` exits 0; ERPNext has 1 WO + ≥1 PO after one SO went through frepple** |
+| Phase | Pass criterion | Status |
+|---|---|---|
+| 0.5 | `curl http://localhost:9000/` returns 200; basic-auth + JWT round-trip works | ✅ |
+| 1 | Settings form loads; Custom Page iframe URL parses as valid JWT | ✅ |
+| 2 | All 29 DocTypes visible in desk list views; export/fetch controllers mocked | ✅ |
+| 3 | All 6 desk pages render; workspace shows 9 sections | ✅ |
+| 4 | `bench --site test.localhost run-tests --app fact_frepple` green; CI green | ✅ 37 unit tests green (CI unverified locally — no ruff in this bench env) |
+| 5 | `ANALYSIS_AND_MIGRATION_PLAN.md` rewritten; PR merged to `dev` | ✅ merged to `dev` (no remote configured, so merged locally rather than via PR) |
+| **6** | **`bench fact-frepple e2e` exits 0; ERPNext has 1 WO + ≥1 PO after one SO went through frepple** | ✅ `bench fact-frepple-e2e` exits 0 from a cold start: 1 WO (qty 10) + 1 Frepple PO (RM-001 ← SUPP-001) |
 
 ---
 

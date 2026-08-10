@@ -16,6 +16,10 @@ class FreppleIntegrationDataFetching(Document):
 	pass
 
 
+# F5: logger replaces the v14 ad-hoc print() statements.
+_logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
+
+
 def get_wip_location_prefix() -> str:
 	"""v17 — R8: read WIP-location prefix from Frepple Settings instead of
 	the v14 hard-coded 'Work In Progress' literal."""
@@ -23,6 +27,17 @@ def get_wip_location_prefix() -> str:
 		frappe.db.get_single_value("Frepple Settings", "wip_location_name")
 		or "Work In Progress"
 	)
+
+
+def _hrms_installed() -> bool:
+	"""``True`` when the HRMS tables the skill fetches depend on exist.
+
+	``Skill`` and ``Employee Skill Map`` ship with **hrms**, not erpnext. The
+	v14 source assumed hrms was always present, so ``fetch_skills`` raised a
+	raw ``ProgrammingError: Table 'tabSkill' doesn't exist`` on any site
+	without it — found by the Phase 6 E2E on an erpnext-only bench.
+	"""
+	return frappe.db.table_exists("Skill") and frappe.db.table_exists("Employee Skill Map")
 
 
 @frappe.whitelist()
@@ -195,6 +210,9 @@ def fetch_resources():
 			new_workstation.insert()
 
 def fetch_skills():
+	if not _hrms_installed():
+		_logger.info("fetch_skills skipped — hrms (Skill DocType) not installed")
+		return
 	skills = frappe.db.sql("""SELECT name FROM `tabSkill`""",as_dict=1)
 	for skill in skills:
 		if not frappe.db.exists("Frepple Skill",skill.name):
@@ -204,6 +222,9 @@ def fetch_skills():
 
 
 def fetch_resource_skills():
+	if not _hrms_installed():
+		_logger.info("fetch_resource_skills skipped — hrms (Employee Skill Map) not installed")
+		return
 	employee_skill_list = frappe.db.sql("""
 		SELECT esm.name, es.skill, es.proficiency
 		FROM `tabEmployee Skill Map` esm, `tabEmployee Skill` es
@@ -213,7 +234,7 @@ def fetch_resource_skills():
 
 	if (employee_skill_list):
 		for i in employee_skill_list:
-			print(i)
+			_logger.info(f"{i}")
 			
 			if not frappe.db.exists("Frepple Resource Skill",i.name+"@"+i.skill):
 				new_resource_skill = frappe.new_doc("Frepple Resource Skill")
@@ -244,6 +265,53 @@ def fetch_suppliers():
 # 			new_supplier.insert()
 
 
+def fetch_item_suppliers():
+	"""Project ERPNext ``Item Supplier`` rows into ``Frepple Item Supplier``.
+
+	``fetch_data`` has always called this, but the v14 source never defined it
+	— the flag simply raised ``NameError`` at runtime. Found by the Phase 6
+	E2E, which needs these rows: without an item-supplier link carrying a lead
+	time, frepple has no sourcing path and plans no purchase order at all.
+
+	``day``/``time`` together form frepple's ``leadtime`` (see
+	``export_item_suppliers``), so the ERPNext ``lead_time_days`` maps to
+	``day`` with a zero time component.
+	"""
+	item_suppliers = frappe.db.sql(
+		"""
+		SELECT isup.supplier, isup.parent AS item, i.valuation_rate, i.lead_time_days
+		FROM `tabItem Supplier` isup, `tabItem` i
+		WHERE isup.parent = i.name AND isup.parenttype = 'Item'
+		""",
+		as_dict=1,
+	)
+
+	for row in item_suppliers:
+		name = f"{row.supplier}@{row.item}"
+		# frepple resolves both ends by name, so a dangling link would be
+		# rejected on export — skip rather than create garbage.
+		if not (
+			frappe.db.exists("Frepple Supplier", row.supplier)
+			and frappe.db.exists("Frepple Item", row.item)
+		):
+			_logger.info(f"fetch_item_suppliers skipped {name} — supplier or item not mirrored")
+			continue
+
+		if not frappe.db.exists("Frepple Item Supplier", name):
+			new_doc = frappe.new_doc("Frepple Item Supplier")
+			new_doc.supplier = row.supplier
+			new_doc.item = row.item
+			new_doc.supplier_cost = row.valuation_rate or 0
+			new_doc.day = row.lead_time_days or 0
+			new_doc.time = "00:00:00"
+			new_doc.insert()
+		else:
+			frappe.db.set_value("Frepple Item Supplier", name, {
+				"supplier_cost": row.valuation_rate or 0,
+				"day": row.lead_time_days or 0,
+			})
+
+
 def fetch_operations():
 	wip_prefix = get_wip_location_prefix()
 	locations = frappe.db.sql(
@@ -263,7 +331,7 @@ def fetch_operations():
 	for BOM in BOMs:
 		if not frappe.db.exists("Frepple Operation",BOM.name): 
 			# FOR routing type operation : BOM
-			print(BOM)
+			_logger.info(f"{BOM}")
 			new_operation = frappe.new_doc("Frepple Operation")
 			new_operation.operation = BOM.name
 			new_operation.location = locations[0].name
@@ -302,7 +370,7 @@ def fetch_operation_materials():
 	as_dict=1)
 
 	for BOM in BOMs:
-		print(BOM.name)
+		_logger.info(f"{BOM.name}")
 		frepple_operations = frappe.db.sql(
 			"""
 			SELECT name,type,operation_owner
@@ -310,7 +378,7 @@ def fetch_operation_materials():
 			WHERE type = "time_per" and operation_owner = %s
 			""",
 		BOM.name,as_dict=1)
-		print(frepple_operations[0].name)
+		_logger.info(f"{frepple_operations[0].name}")
 		if (BOM.transfer_material_against == "Work Order"): #let the first operation consumed raw material and produce product
 			# for item in BOM.item_code:
 			# For product which is being produced

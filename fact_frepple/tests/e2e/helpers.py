@@ -1,0 +1,224 @@
+# Copyright (c) 2026, vineel and contributors
+# For license information, please see license.txt
+"""Shared plumbing for the Phase 6 end-to-end tests."""
+
+from __future__ import annotations
+
+import os
+
+import frappe
+import requests
+
+# Mirror DocTypes the connector stages ERPNext data in. Cleared between E2E
+# runs so each test starts from a known state.
+MIRROR_DOCTYPES = (
+	"Frepple Manufacturing Order",
+	"Frepple Purchase Order",
+	"Frepple Demand",
+	"Frepple Operation Material",
+	"Frepple Operation Resource",
+	"Frepple Operation",
+	"Frepple Item Supplier",
+	"Frepple Supplier",
+	"Frepple Resource Skill",
+	"Frepple Skill",
+	"Frepple Resource",
+	"Frepple Buffer",
+	"Frepple Item Distribution",
+	"Frepple Location",
+	"Frepple Customer",
+	"Frepple Item",
+	"Frepple Calendar Bucket",
+	"Frepple Calendar",
+)
+
+# frepple entities purged before a run, in dependency order (children first)
+# so referential integrity never blocks the delete.
+FREPPLE_PURGE_ORDER = (
+	"operationmaterial",
+	"operationresource",
+	"demand",
+	"operation",
+	"itemsupplier",
+	"buffer",
+	"item",
+	"customer",
+	"supplier",
+	"resource",
+	"location",
+)
+
+
+def frepple_settings():
+	return frappe.get_single("Frepple Settings")
+
+
+def e2e_config() -> dict:
+	"""Connection details for the real frepple used by the E2E.
+
+	Deliberately *not* read from ``Frepple Settings``: the Phase 4 unit tests
+	overwrite that singleton with fake values (``secret_key`` of
+	``phase3-test-secret`` and friends) and never restore it, so an E2E that
+	trusted the DocType would inherit whichever fake the last unit test left
+	behind and fail with a confusing "secret drift" error.
+
+	Configure in ``site_config.json``::
+
+	    "frepple_e2e": {
+	        "url": "http://localhost:9000",
+	        "username": "admin",
+	        "password": "...",
+	        "secret_key": "<the container's SECRET_KEY>"
+	    }
+
+	Environment variables (``FREPPLE_E2E_URL`` etc.) win over site config so
+	CI can inject credentials without writing them to disk.
+	"""
+	conf = dict(frappe.conf.get("frepple_e2e") or {})
+	for key in ("url", "username", "password", "secret_key", "wip_location_name"):
+		env = os.environ.get(f"FREPPLE_E2E_{key.upper()}")
+		if env:
+			conf[key] = env
+	conf.setdefault("wip_location_name", "Work In Progress")
+	return conf
+
+
+def apply_e2e_settings():
+	"""Point ``Frepple Settings`` at the real frepple and return the doc.
+
+	Called from every E2E ``setUpClass`` so the tests are order-independent —
+	they repair whatever the unit tests did to the singleton.
+	"""
+	conf = e2e_config()
+	missing = [k for k in ("url", "username", "password", "secret_key") if not conf.get(k)]
+	if missing:
+		raise RuntimeError(
+			f"frepple E2E config is missing {missing}. Set `frepple_e2e` in site_config.json "
+			"or FREPPLE_E2E_* env vars — see docker/README.md."
+		)
+
+	frappe.db.set_single_value("Frepple Settings", {
+		"url": conf["url"],
+		"username": conf["username"],
+		"password": conf["password"],
+		"authorization_header": conf.get("authorization_header", ""),
+		"secret_key": conf["secret_key"],
+		"wip_location_name": conf["wip_location_name"],
+		"frepple_integration": 1,
+	})
+	frappe.db.commit()
+	return frepple_settings()
+
+
+def frepple_available() -> bool:
+	"""``True`` when the configured frepple answers its REST API.
+
+	Evaluated at import time by the ``skipUnless`` decorators, so it must never
+	raise — an unreachable container is a skip, not an error.
+	"""
+	try:
+		conf = e2e_config()
+		if not conf.get("url"):
+			return False
+		resp = requests.get(
+			f"{conf['url']}/api/input/item/?format=json",
+			auth=(conf.get("username"), conf.get("password")),
+			timeout=10,
+		)
+		return resp.status_code == 200
+	except Exception:
+		return False
+
+
+def frepple_settings_configured():
+	"""Return settings pointed at the real frepple, failing loudly if unset."""
+	return apply_e2e_settings()
+
+
+def _flags(prefix_true: bool = True) -> dict:
+	"""Build the checkbox payload the export/fetch controllers expect.
+
+	Both controllers take a JSON blob of per-entity checkboxes; the E2E turns
+	all of them on to exercise the full pipeline.
+	"""
+	keys = (
+		"frepple_calendar",
+		"frepple_calendar_bucket",
+		"frepple_item",
+		"frepple_customer",
+		"frepple_location",
+		"frepple_buffer",
+		"frepple_item_distribution",
+		"frepple_resource",
+		"frepple_skill",
+		"frepple_resource_skill",
+		"frepple_supplier",
+		"frepple_item_supplier",
+		"frepple_operation",
+		"frepple_operation_material",
+		"frepple_operation_resource",
+		"frepple_demand",
+	)
+	return {k: 1 if prefix_true else 0 for k in keys}
+
+
+def fetch_flags() -> dict:
+	return _flags()
+
+
+def export_flags() -> dict:
+	return _flags()
+
+
+def reset_mirror_doctypes() -> None:
+	"""Delete every mirror row so a run cannot pass on stale data."""
+	for doctype in MIRROR_DOCTYPES:
+		frappe.db.delete(doctype)
+	frappe.db.commit()
+
+
+def reset_work_orders() -> None:
+	"""Remove Work Orders generated by previous E2E runs.
+
+	The E2E asserts "exactly one Work Order for FG-001"; without this the
+	count grows every run and the assertion turns into a flaky tripwire that
+	only passes on a fresh site.
+	"""
+	for wo in frappe.get_all(
+		"Work Order", filters={"production_item": "FG-001"}, fields=["name", "docstatus"]
+	):
+		doc = frappe.get_doc("Work Order", wo.name)
+		if doc.docstatus == 1:
+			doc.cancel()
+		doc.delete(ignore_permissions=True)
+	frappe.db.commit()
+
+
+def purge_frepple_input(entities: tuple[str, ...] = FREPPLE_PURGE_ORDER) -> None:
+	"""Best-effort wipe of frepple's input tables via its REST API.
+
+	frepple has no bulk-delete endpoint, so this deletes row by row. Failures
+	are tolerated: a leftover row that cannot be removed is not worth failing
+	the run over, and the assertions are written to be specific enough that
+	residue does not create false passes.
+	"""
+	conf = e2e_config()
+	base = conf["url"]
+	auth = (conf["username"], conf["password"])
+
+	for entity in entities:
+		try:
+			resp = requests.get(
+				f"{base}/api/input/{entity}/?format=json", auth=auth, timeout=30
+			)
+			if resp.status_code != 200:
+				continue
+			for row in resp.json():
+				key = row.get("name") or row.get("reference")
+				if not key:
+					continue
+				requests.delete(
+					f"{base}/api/input/{entity}/{key}/", auth=auth, timeout=30
+				)
+		except requests.exceptions.RequestException:
+			continue

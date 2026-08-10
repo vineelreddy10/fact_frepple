@@ -305,6 +305,12 @@ are the concrete return on that phase:
 | M2 | `get_iframe_url` passed `doc.expiration` (minutes) where `sign_jwt_url` expects seconds | `a399e2d` — multiplied by 60 |
 | M3 | `UnitTestCase` has no implicit rollback, so the second fetch silently took the update branch | `6be757c` — mirror DocTypes scrubbed in `setUp` |
 | M4 | `sign_jwt_url` used `round(time.time())`, putting `exp` a second past a truncated-clock upper bound (failed 7/12 runs) | `246b327` — truncate with `int()` |
+| M5 | `run_plan` POSTed to `/api/runplan/`, which 302s to the login page — no plan ever ran. Phase 3 changed the correct v14 path and the Phase 4 mock asserted the wrong URL | Phase 6 — restored `/execute/api/runplan/` |
+| M6 | `fetch_data` called `fetch_item_suppliers()`, never ported from v14 → `NameError` | Phase 6 — implemented |
+| M7 | `fetch_skills`/`fetch_resource_skills` query hrms-only tables → `ProgrammingError` without hrms | Phase 6 — table-existence guard |
+| M8 | frepple 9.x rejects an `itemsupplier` without `effective_start` (HTTP 400) | Phase 6 — send an anchor date |
+| M9 | frepple's `"Unknown supplier"` placeholder aborted the whole PO import via `LinkValidationError` | Phase 6 — skip and log |
+| M10 | Phase 4 unit tests leave fakes in the `Frepple Settings` singleton, breaking any later test that needs real credentials | Phase 6 — E2E config from `site_config.json` |
 
 ### Non-issues (verified against v17 source)
 
@@ -319,7 +325,7 @@ are the concrete return on that phase:
 
 ## 9. Migration plan (active spec lives in `specs/migrate-v17.md`)
 
-This section is a **summary** — for the full phase plan with decision rationale, per-phase acceptance gates, and risks, see [`specs/migrate-v17.md`](./specs/migrate-v17.md). Per-phase completion notes live there; Phases 0–5 are done, Phase 6 is pending.
+This section is a **summary** — for the full phase plan with decision rationale, per-phase acceptance gates, and risks, see [`specs/migrate-v17.md`](./specs/migrate-v17.md). Per-phase completion notes live there; Phases 0–6 are done. Phase 7 carries the §6.5 status-sync round-trip.
 
 ### Phase 0 — Repository & source prep (~½ day)
 Clone source to `/tmp/opencode/erpnext_frepple_connector/`; create `feat/migrate-v17` branch off `dev`.
@@ -343,7 +349,7 @@ Replace stub tests with real ones (`responses` lib + `unittest`). Add CI step fo
 This document is updated (§8, §12, §13). PR `feat/migrate-v17 → dev`.
 
 ### Phase 6 — End-to-end two-way transfer test (~2 days)
-Stand up ERPNext fixtures (1 SO → 1 WO + 1 PO). Run the full export → plan → fetch round-trip against the real frepple container from Phase 0.5. Validate the WO and PO land in ERPNext with correct quantities.
+Stand up ERPNext fixtures (1 SO → 1 WO + 1 PO). Run the full export → plan → fetch round-trip against the real frepple container from Phase 0.5. Validate the WO and PO land in ERPNext with correct quantities. **Done** — `bench fact-frepple-e2e`, green from a cold start; found six bugs the mocks could not (M5–M10).
 
 **Total:** 11-15 working days.
 
@@ -357,16 +363,17 @@ Phase 6 exercises a real frepple container.
 | # | Risk | Mitigation | Outcome |
 |---|---|---|---|
 | 1 | msf4-0 repo deleted or significantly evolved | Phase 0 step 1 fails fast. Backup: ask user for internal fork | Closed — cloned fine, attributed in `NOTICE` |
-| 2 | frepple 9.17 REST API contract differs from 2022 source code | Phase 6 E2E catches it (real frepple, not mocks) | **Open** — only the `/api/runplan/` path change is confirmed so far |
+| 2 | frepple 9.17 REST API contract differs from 2022 source code | Phase 6 E2E catches it (real frepple, not mocks) | **Closed — and it did**: wrong runplan endpoint (M5), required `effective_start` (M8), `"Unknown supplier"` placeholder (M9) |
 | 3 | v14 user data on existing customer sites | Greenfield on `test.localhost`. Forward-compatible `patches.txt` | Closed — no patch needed |
 | 4 | ERPNext v17 field renames (`Item.valuation_rate`, `Bin.actual_qty`, `BOM.time_in_mins`, `Workstation`) | Audit per field mapping in Phase 2 | Closed — but the audit missed three aliases; Phase 4 tests caught them (M1) |
 | 5 | Type-annotation overhead for the ~108 .py files | Only annotate the ~20 whitelisted methods | Closed — no friction |
 | 6 | License drift (MIT app next to GPLv3 ERPNext) | Framework is MIT; connector license independent. Documented in `NOTICE` | Closed |
 | 7 | Hard-coded WIP location convention | Made configurable via `Frepple Settings.wip_location_name` | Closed |
-| 8 | The `frepple_integration` flag auto-syncs status — could fire in unexpected orders | Out of scope for migration; Phase 7 hardening item | Deferred to Phase 7 |
-| 9 | JWT secret drift between Frepple Settings and frepple container | Phase 0.5.3 stores both; Phase 6.2 asserts they match | **Open** — unit-tested against the settings secret only |
-| 10 | `frame-ancestors` CSP blocking the iframe | Phase 0.5.1 compose sets `FREPPLE_CONTENT_SECURITY_POLICY` and `FREPPLE_X_FRAME_OPTIONS` | **Open** — never rendered in a real browser yet |
+| 8 | The `frepple_integration` flag auto-syncs status — could fire in unexpected orders | Out of scope for migration; Phase 7 hardening item | Deferred to Phase 7 (with §6.5 status sync) |
+| 9 | JWT secret drift between Frepple Settings and frepple container | Phase 0.5.3 stores both; Phase 6.2 asserts they match | Closed — E2E asserts the real frepple returns 200 for our token and rejects a wrong-secret one |
+| 10 | `frame-ancestors` CSP blocking the iframe | Phase 0.5.1 compose sets `FREPPLE_CONTENT_SECURITY_POLICY` and `FREPPLE_X_FRAME_OPTIONS` | Closed — asserted against the live response header |
 | 11 | Postgres container disk fills up over many plan runs | Named volume `frepple-pgdata`; `make reset` wipes | Closed |
+| 12 | **`plan.webservice=true` (frepple default) keeps the plan in memory, so the connector imports nothing and reports no error** | Discovered in Phase 6; `make configure-plan` sets it to `false`, required after every `make reset` | Open as an operational footgun — no env var exists for it |
 
 ---
 
@@ -383,7 +390,7 @@ Phase 6 exercises a real frepple container.
 
 ## 12. Estimated effort
 
-Phases 0–5 are complete on `feat/migrate-v17`; the table below carries the
+Phases 0–6 are complete on `dev`; the table below carries the
 original estimate next to what the phase actually cost.
 
 | Phase | Estimate | Actual | Status | Note |
@@ -395,20 +402,23 @@ original estimate next to what the phase actually cost.
 | 3 — Desk pages | 1 day | ~0.5 day | done | Reuses the shared `sign_jwt_url` helper |
 | 4 — Tests + CI + docs | 2-3 days | ~1.5 days | done | Real tests caught 3 real bugs (M1–M3) |
 | 5 — Spec + handoff | 0.5 day | ~0.5 day | done | This document update; caught M4 |
-| **6 — E2E two-way test** | **2 days** | — | **pending** | **Real frepple + real bench** |
-| **Total** | **11-15 days** | **~5.5 days + Ph6** | | Estimates were conservative; scripting Phase 2 was the big saving |
+| **6 — E2E two-way test** | **2 days** | **~1 day** | **done** | **Real frepple + real bench; found M5–M10** |
+| **Total** | **11-15 days** | **~6.5 days** | | Estimates were conservative; scripting Phase 2 was the big saving |
 
 The two compression shortcuts floated before Phase 4 (skip unit tests for
 E2E-covered entities; mock Phase 6 instead of running real frepple) both look
 like bad trades in hindsight — the Phase 4 unit tests found four bugs that an
-E2E happy path would not have isolated.
+E2E happy path would not have isolated, and Phase 6 against the *real*
+container found six more that no mock could have caught. Mocking Phase 6, the
+shortcut explicitly labelled "not recommended", would have shipped a connector
+whose plan endpoint silently did nothing.
 
 ---
 
-## 13. File inventory — as shipped (Phases 0–5)
+## 13. File inventory — as shipped (Phases 0–6)
 
-This is the state of `feat/migrate-v17` at the end of Phase 5, not a to-do
-list. 105 `.py` files, 36 `.js`, 36 `.json` (excluding `__pycache__`).
+This is the state of `dev` at the end of Phase 6, not a to-do
+list. 111 `.py` files, 36 `.js`, 36 `.json` (excluding `__pycache__`).
 
 ```
 fact_frepple/
@@ -444,10 +454,20 @@ Repo root:
   NOTICE                               msf4-0 attribution + GPLv3 chain
   pyproject.toml                       + responses~=0.25.0
 
-Still to come (Phase 6):
-  scripts/e2e_setup.sh  scripts/e2e_run.sh
-  fact_frepple/tests/e2e/test_*.py
-  fact_frepple/commands/__init__.py    bench fact-frepple e2e runner
+Still to come (Phase 7):
+  §6.5 status-sync round-trip (WO submit → frepple PATCH;
+       frepple PO receipt → ERPNext Purchase Receipt)
+```
+
+Added by Phase 6:
+
+```
+  fact_frepple/tests/e2e/
+    fixtures.py                        ERPNext fixture builder (idempotent)
+    helpers.py                         config, reset, frepple purge
+    test_e2e_two_way.py                9 tests: transfer, failure modes, iframe
+  fact_frepple/commands/__init__.py    bench fact-frepple-e2e
+  docker/Makefile                      + configure-plan (plan.webservice=false)
 ```
 
 ---
