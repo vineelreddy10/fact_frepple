@@ -45,7 +45,7 @@ add_to_apps_screen = [
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/fact_frepple/css/fact_frepple.css"
+app_include_css = "/assets/fact_frepple/css/fact_frepple.css"
 # app_include_js = "/assets/fact_frepple/js/fact_frepple.js"
 
 # include js, css files in header of web template

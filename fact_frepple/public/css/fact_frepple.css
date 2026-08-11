@@ -1,0 +1,40 @@
+/* fact_frepple — desk layout fix
+ *
+ * v17's body defaults to `display: flex; flex-direction: column` so the
+ * workspace-dock (icon rail) and the body sidebar can stack above the page
+ * main. The body sidebar's `.body-sidebar-placeholder` (a hidden sibling
+ * that reserves layout space) is hard-sized at `100vh`, so when the dock
+ * + sidebar are both visible the total exceeds the viewport and the main
+ * section falls off the bottom — the form/page renders in the DOM but is
+ * unreachable because the body has `overflow: visible` and never grows
+ * past 100vh.
+ *
+ * ERPNext ships with the same broken layout, but their settings/forms
+ * usually render through a shortcut or modal and the user doesn't notice
+ * on a static page. The connector's pages are full-height iframes, so the
+ * issue is visible. Three surgical fixes (no behavior change for hidden
+ * sidebar / collapsed dock):
+ *
+ * 1. Let the placeholder take only the width it needs to reserve; the
+ *    sidebar floats above it and is itself height-constrained by its own
+ *    overflow-y, so the placeholder height should not push the main.
+ * 2. Reserve the sidebar's width as a left margin on the main section so
+ *    the body sidebar (absolutely positioned, z-index 1020) sits over a
+ *    blank gutter instead of overlapping the form. The placeholder width
+ *    matches the actual sidebar (`--sidebar-width`).
+ * 3. Make the body scrollable as a belt-and-braces in case the dock grows
+ *    taller than the viewport on a small screen.
+ */
+body.workspace-dock-active .body-sidebar-placeholder {
+	height: auto;
+}
+
+body.workspace-dock-active .main-section {
+	margin-left: var(--sidebar-width, 220px);
+}
+
+body.workspace-dock-active {
+	overflow-y: auto;
+	height: auto;
+	min-height: 100vh;
+}

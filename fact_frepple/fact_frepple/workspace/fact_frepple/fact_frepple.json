@@ -1,7 +1,7 @@
 {
  "app": "fact_frepple",
  "charts": [],
- "content": "[]",
+ "content": "[{\"id\":\"ff_hdr_welcome\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Welcome to Fact Frepple</b></span>\",\"col\":12}},{\"id\":\"ff_hdr_intro\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"text-muted\\\">Bidirectional ERPNext \u2194 frepple APS bridge. Start with the planner pages, then sync data from Settings.</span>\",\"col\":12}},{\"id\":\"ff_spacer1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ff_hdr_getting\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\"><b>Getting Started</b></span>\",\"col\":12}},{\"id\":\"ff_sc_settings\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Frepple Settings\",\"col\":3}},{\"id\":\"ff_sc_data_export\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Frepple Data Export\",\"col\":3}},{\"id\":\"ff_sc_integration\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Frepple Integration Data Fetching\",\"col\":3}},{\"id\":\"ff_sc_run_plan\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Frepple Run Plan\",\"col\":3}},{\"id\":\"ff_spacer2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ff_hdr_planner\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\"><b>Planner Pages</b></span>\",\"col\":12}},{\"id\":\"ff_sc_demand\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Frepple Demand\",\"col\":3}},{\"id\":\"ff_sc_item\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Frepple Item\",\"col\":3}},{\"id\":\"ff_sc_customer\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Frepple Customer\",\"col\":3}},{\"id\":\"ff_sc_location\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Frepple Location\",\"col\":3}}]",
  "creation": "2022-02-13 21:25:19.304794",
  "custom_blocks": [],
  "docstatus": 0,
@@ -25,7 +25,96 @@
  "quick_lists": [],
  "roles": [],
  "sequence_id": 50.0,
- "shortcuts": [],
+ "shortcuts": [
+  {
+   "color": "Gray",
+   "doc_view": "List",
+   "format": "{}",
+   "icon": "settings",
+   "label": "Frepple Settings",
+   "link_to": "Frepple Settings",
+   "restrict_to_domain": "",
+   "stats_filter": "{}",
+   "type": "DocType"
+  },
+  {
+   "color": "Gray",
+   "doc_view": "List",
+   "format": "{}",
+   "icon": "upload",
+   "label": "Frepple Data Export",
+   "link_to": "Frepple Data Export",
+   "restrict_to_domain": "",
+   "stats_filter": "{}",
+   "type": "DocType"
+  },
+  {
+   "color": "Gray",
+   "doc_view": "List",
+   "format": "{}",
+   "icon": "download",
+   "label": "Frepple Integration Data Fetching",
+   "link_to": "Frepple Integration Data Fetching",
+   "restrict_to_domain": "",
+   "stats_filter": "{}",
+   "type": "DocType"
+  },
+  {
+   "color": "Gray",
+   "doc_view": "List",
+   "format": "{}",
+   "icon": "play",
+   "label": "Frepple Run Plan",
+   "link_to": "Frepple Run Plan",
+   "restrict_to_domain": "",
+   "stats_filter": "{}",
+   "type": "DocType"
+  },
+  {
+   "color": "Gray",
+   "doc_view": "List",
+   "format": "{}",
+   "icon": "list",
+   "label": "Frepple Demand",
+   "link_to": "Frepple Demand",
+   "restrict_to_domain": "",
+   "stats_filter": "{}",
+   "type": "DocType"
+  },
+  {
+   "color": "Gray",
+   "doc_view": "List",
+   "format": "{}",
+   "icon": "box",
+   "label": "Frepple Item",
+   "link_to": "Frepple Item",
+   "restrict_to_domain": "",
+   "stats_filter": "{}",
+   "type": "DocType"
+  },
+  {
+   "color": "Gray",
+   "doc_view": "List",
+   "format": "{}",
+   "icon": "users",
+   "label": "Frepple Customer",
+   "link_to": "Frepple Customer",
+   "restrict_to_domain": "",
+   "stats_filter": "{}",
+   "type": "DocType"
+  },
+  {
+   "color": "Gray",
+   "doc_view": "List",
+   "format": "{}",
+   "icon": "map-pin",
+   "label": "Frepple Location",
+   "link_to": "Frepple Location",
+   "restrict_to_domain": "",
+   "stats_filter": "{}",
+   "type": "DocType"
+  }
+ ],
  "sidebar_items": [
   {
    "child": 0,
