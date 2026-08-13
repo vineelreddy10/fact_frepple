@@ -28,6 +28,24 @@ class FreppleCustomPage {
 
 	init() {
 		this.createSelectionField();
+		this.loadDefault();
+	}
+
+	loadDefault() {
+		// Auto-render the row marked default=1 so the page is not empty on
+		// first visit. The picker is still authoritative; once the operator
+		// picks a row from the dropdown, normal switching takes over.
+		frappe.call({
+			method: 'fact_frepple.fact_frepple.doctype.frepple_custom_page_settings.frepple_custom_page_settings.get_default_page_name',
+		}).then((r) => {
+			const pageName = r && r.message;
+			if (pageName) {
+				this.pageName = pageName;
+				this.showIframe();
+				this.changeTitle();
+				this.currentPage = this.pageName;
+			}
+		});
 	}
 
 	showIframe() {
@@ -37,11 +55,12 @@ class FreppleCustomPage {
 				this.iframeHeight = r.message.iframeHeight;
 
 				if (this.URL) {
+					const safeURL = frappe.utils.escape_html(this.URL);
 					const iFrameHtml = `
 						<iframe
-							src=${this.URL}
+							src="${safeURL}"
 							width="100%"
-							height=${this.iframeHeight}
+							height="${frappe.utils.escape_html(String(this.iframeHeight))}"
 							marginwidth="0"
 							marginheight="0"
 							frameborder="no"

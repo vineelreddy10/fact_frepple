@@ -23,9 +23,10 @@ class PurchaseOrderPage {
 			(r) => {
 				this.URL = r.message;
 				if (this.URL) {
+					const safeURL = frappe.utils.escape_html(this.URL);
 					const iFrameHtml = `
 						<iframe
-							src=${this.URL}
+							src="${safeURL}"
 							width="100%"
 							height="590"
 							marginwidth="0"
