@@ -74,17 +74,27 @@ class TestPageIframeMethodPaths(UnitTestCase):
 
 	def test_renamed_pages_do_not_reference_the_old_module(self):
 		# Belt-and-braces: even if someone reorders the previous test, this
-		# fails on the exact regression we shipped in 2026-08-13.
-		for page_folder, old_slug, _new_slug in RENAMED_SLUGS:
+		# fails on the exact regression we shipped in 2026-08-13. Check the
+		# bare old slug as a segment of the path (``doctype.<slug>.<slug>``),
+		# not as a substring — the new slug (``frepple_<slug>``) contains the
+		# old slug as a substring and would trip a naive ``assertNotIn``.
+		old_module_re = re.compile(
+			r"\.doctype\."  # doctype boundary
+			r"(?<![A-Za-z0-9_])"  # not preceded by a slug character
+			r"(" + "|".join(re.escape(old) for _, old, _ in RENAMED_SLUGS) + r")"
+			r"\."
+		)
+		for page_folder, _old_slug, _new_slug in RENAMED_SLUGS:
 			with self.subTest(page=page_folder):
-				path = self._read_method_path(page_folder)
-				self.assertNotIn(
-					old_slug,
-					path,
-					f"{page_folder}/{page_folder}.js still references the "
-					f"old slug '{old_slug}' in its method path. Frappe logs "
-					f"'No module named fact_frepple.fact_frepple.doctype."
-					f"{old_slug}' and the iframe never loads.",
+				js_path = os.path.join(PAGE_DIR, page_folder, f"{page_folder}.js")
+				with open(js_path, encoding="utf-8") as handle:
+					contents = handle.read()
+				self.assertIsNone(
+					old_module_re.search(contents),
+					f"{page_folder}/{page_folder}.js still has the bare old "
+					f"slug in its method path. Frappe logs 'No module named "
+					f"fact_frepple.fact_frepple.doctype.<old_slug>' and the "
+					f"iframe never loads.",
 				)
 
 
