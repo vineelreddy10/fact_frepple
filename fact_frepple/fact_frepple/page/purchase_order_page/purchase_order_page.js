@@ -43,7 +43,7 @@ class PurchaseOrderPage {
 
 	getSettings() {
 		return frappe.call({
-			'method': 'fact_frepple.fact_frepple.doctype.purchase_order_page.purchase_order_page.get_iframe_url'
+			'method': 'fact_frepple.fact_frepple.doctype.frepple_purchase_order_page.frepple_purchase_order_page.get_iframe_url'
 		});
 	}
 }

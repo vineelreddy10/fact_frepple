@@ -43,7 +43,7 @@ class SupplyPathPage {
 
 	getSettings() {
 		return frappe.call({
-			'method': 'fact_frepple.fact_frepple.doctype.supply_path_page.supply_path_page.get_iframe_url'
+			'method': 'fact_frepple.fact_frepple.doctype.frepple_supply_path_page.frepple_supply_path_page.get_iframe_url'
 		});
 	}
 }

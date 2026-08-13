@@ -43,7 +43,7 @@ class ManufacturingOrderPage {
 
 	getSettings() {
 		return frappe.call({
-			'method': 'fact_frepple.fact_frepple.doctype.manufacturing_order_page.manufacturing_order_page.get_iframe_url'
+			'method': 'fact_frepple.fact_frepple.doctype.frepple_manufacturing_order_page.frepple_manufacturing_order_page.get_iframe_url'
 		});
 	}
 }

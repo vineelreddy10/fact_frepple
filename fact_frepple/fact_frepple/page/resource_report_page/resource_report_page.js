@@ -43,7 +43,7 @@ class ResourceReportPage {
 
 	getSettings() {
 		return frappe.call({
-			'method': 'fact_frepple.fact_frepple.doctype.resource_report_page.resource_report_page.get_iframe_url'
+			'method': 'fact_frepple.fact_frepple.doctype.frepple_resource_report_page.frepple_resource_report_page.get_iframe_url'
 		});
 	}
 }
