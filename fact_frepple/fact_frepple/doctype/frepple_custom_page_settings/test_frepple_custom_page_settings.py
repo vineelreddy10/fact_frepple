@@ -23,6 +23,7 @@ import jwt
 from frappe.tests import UnitTestCase
 
 from fact_frepple.fact_frepple.doctype.frepple_custom_page_settings.frepple_custom_page_settings import (
+	get_default_page_name,
 	get_iframe_url,
 )
 
@@ -47,6 +48,9 @@ class TestGetIframeUrl(UnitTestCase):
 		# Seed a Custom Page row keyed on page_name.
 		# ``Frepple Custom Page Settings`` is a non-singleton DocType where
 		# ``page_name`` is the autoname; ``frappe.get_doc`` upserts by name.
+		# ``secret_key`` has ``fetch_from=frepple_settings.secret_key`` but
+		# that ``fetch_from`` only runs on form load, not on insert — so we
+		# set it explicitly here.
 		page_name = "Default"
 		if frappe.db.exists("Frepple Custom Page Settings", page_name):
 			existing = frappe.get_doc("Frepple Custom Page Settings", page_name)
@@ -55,6 +59,7 @@ class TestGetIframeUrl(UnitTestCase):
 			existing.expiration = 600  # in minutes (the field stores minutes)
 			existing.show_navigation_bar = 0
 			existing.iframe_height = 750
+			existing.secret_key = "a" * 64
 			existing.save()
 		else:
 			doc = frappe.new_doc("Frepple Custom Page Settings")
@@ -64,6 +69,7 @@ class TestGetIframeUrl(UnitTestCase):
 			doc.expiration = 600
 			doc.show_navigation_bar = 0
 			doc.iframe_height = 750
+			doc.secret_key = "a" * 64
 			doc.insert()
 
 		frappe.db.commit()
@@ -133,3 +139,65 @@ class TestGetIframeUrl(UnitTestCase):
 		decoded = jwt.decode(token, secret, algorithms=["HS256"])
 
 		self.assertTrue(decoded["navbar"])
+
+
+class TestDefaultPage(UnitTestCase):
+	"""Auto-load on the Frepple Custom Page desk page picks the default row.
+
+	The desk page calls ``get_default_page_name`` on load and renders that
+	row's iframe. ``validate()`` enforces "at most one default" so the
+	auto-load is unambiguous; otherwise two rows marked default would race.
+	"""
+
+	def setUp(self):
+		frappe.db.set_single_value(
+			"Frepple Settings",
+			{
+				"url": "http://localhost:9000",
+				"username": "admin",
+				"password": "admin",
+				"authorization_header": "",
+				"secret_key": "a" * 64,
+				"wip_location_name": "Work In Progress",
+			},
+		)
+		# Clear any leftover defaults from earlier runs so the test is
+		# order-independent.
+		frappe.db.sql("UPDATE `tabFrepple Custom Page Settings` SET `default` = 0")
+		frappe.db.commit()
+
+	def _make(self, page_name: str, default: int = 0) -> None:
+		if frappe.db.exists("Frepple Custom Page Settings", page_name):
+			frappe.delete_doc("Frepple Custom Page Settings", page_name, force=True)
+		doc = frappe.new_doc("Frepple Custom Page Settings")
+		doc.page_name = page_name
+		doc.url = "http://localhost:9000/forecast/"
+		doc.user = "admin"
+		doc.expiration = 600
+		doc.show_navigation_bar = 0
+		doc.iframe_height = 750
+		doc.secret_key = "a" * 64
+		doc.default = default
+		doc.insert()
+
+	def test_get_default_returns_none_when_no_rows_marked(self):
+		self._make("A")
+		self._make("B")
+		self.assertIsNone(get_default_page_name())
+
+	def test_get_default_returns_the_marked_row(self):
+		self._make("A")
+		self._make("B", default=1)
+		self.assertEqual(get_default_page_name(), "B")
+
+	def test_validate_keeps_only_one_default(self):
+		# Two rows default=1 — saving the second must clear the first.
+		self._make("A", default=1)
+		self._make("B", default=1)
+		b = frappe.get_doc("Frepple Custom Page Settings", "B")
+		b.default = 1
+		b.save()
+		a = frappe.get_doc("Frepple Custom Page Settings", "A")
+		self.assertFalse(a.default)
+		# And get_default resolves to B.
+		self.assertEqual(get_default_page_name(), "B")

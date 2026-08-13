@@ -46,7 +46,10 @@ add_to_apps_screen = [
 
 # include js, css files in header of desk.html
 app_include_css = "/assets/fact_frepple/css/fact_frepple.css"
-# app_include_js = "/assets/fact_frepple/js/fact_frepple.js"
+# The frepple_route_overrides.js shim and its boot_session companion were
+# removed when the four slug-colliding singletons were renamed (Supply Path
+# Page → Frepple Supply Path Page, etc.). The slugs no longer collide, so the
+# desk Page at /desk/<slug> routes naturally without any client-side surgery.
 
 # include js, css files in header of web template
 # web_include_css = "/assets/fact_frepple/css/fact_frepple.css"
@@ -71,7 +74,7 @@ app_include_css = "/assets/fact_frepple/css/fact_frepple.css"
 # Svg Icons
 # ------------------
 # include app icons in desk
-app_include_icons = "fact_frepple/public/icons/fact_frepple.svg"
+app_include_icons = "/assets/fact_frepple/icons/fact_frepple.svg"
 
 # Home Pages
 # ----------

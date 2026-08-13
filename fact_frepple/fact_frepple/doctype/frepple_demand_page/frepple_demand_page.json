@@ -30,7 +30,7 @@
    "label": "Show Navigation Bar"
   },
   {
-   "default": "http://localhost:9000/data/input/demand/",
+   "default": "http://91.107.206.65:9000/data/input/demand/",
    "description": "Url of the Frepple page to be embedded.",
    "fieldname": "url",
    "fieldtype": "Data",

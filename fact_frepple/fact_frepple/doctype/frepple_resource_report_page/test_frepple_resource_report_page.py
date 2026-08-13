@@ -7,16 +7,10 @@ import frappe
 from frappe.tests import UnitTestCase
 
 
-class TestSupplyPathPage(UnitTestCase):
-	"""Phase 3 acceptance — `Supply Path Page` iframe URL helper.
+class TestFreppleResourceReportPage(UnitTestCase):
+	"""Phase 3 acceptance — `Frepple Resource Report Page` iframe URL helper."""
 
-	The Supply Path view is unique among the 5 single-row pages because it
-	optionally filters by a specific demand name (a Frepple Demand mirror
-	row). The test covers the demand-filter branch and asserts that the JWT
-	is still signed by `Frepple Settings.secret_key`.
-	"""
-
-	def test_get_iframe_url_with_demand_filter(self):
+	def test_get_iframe_url_signs_with_frepple_settings_secret(self):
 		frappe.db.set_single_value(
 			"Frepple Settings",
 			{
@@ -29,23 +23,22 @@ class TestSupplyPathPage(UnitTestCase):
 			},
 		)
 		frappe.db.set_single_value(
-			"Supply Path Page",
+			"Frepple Resource Report Page",
 			{
 				"expiration": 600,
 				"user": "admin",
 				"show_navigation_bar": 0,
-				"url": "http://localhost:9000/supplypath/demand/",
-				"demand": "SO-001",
+				"url": "http://localhost:9000/data/input/operationplanresource/",
 			},
 		)
 		frappe.db.commit()
 
-		from fact_frepple.fact_frepple.doctype.supply_path_page.supply_path_page import (
+		from fact_frepple.fact_frepple.doctype.frepple_resource_report_page.frepple_resource_report_page import (
 			get_iframe_url,
 		)
 
 		url = get_iframe_url()
-		self.assertIn("/supplypath/demand/SO-001/", url)
+		self.assertTrue(url.startswith("http://localhost:9000/data/input/operationplanresource/"))
 		self.assertIn("webtoken=", url)
 
 		import jwt

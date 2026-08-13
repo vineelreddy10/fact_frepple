@@ -7,8 +7,8 @@ import frappe
 from frappe.tests import UnitTestCase
 
 
-class TestManufacturingOrderPage(UnitTestCase):
-	"""Phase 3 acceptance — `Manufacturing Order Page` iframe URL helper."""
+class TestFreppleManufacturingOrderPage(UnitTestCase):
+	"""Phase 3 acceptance — `Frepple Manufacturing Order Page` iframe URL helper."""
 
 	def test_get_iframe_url_signs_with_frepple_settings_secret(self):
 		frappe.db.set_single_value(
@@ -23,7 +23,7 @@ class TestManufacturingOrderPage(UnitTestCase):
 			},
 		)
 		frappe.db.set_single_value(
-			"Manufacturing Order Page",
+			"Frepple Manufacturing Order Page",
 			{
 				"expiration": 600,
 				"user": "admin",
@@ -33,7 +33,7 @@ class TestManufacturingOrderPage(UnitTestCase):
 		)
 		frappe.db.commit()
 
-		from fact_frepple.fact_frepple.doctype.manufacturing_order_page.manufacturing_order_page import (
+		from fact_frepple.fact_frepple.doctype.frepple_manufacturing_order_page.frepple_manufacturing_order_page import (
 			get_iframe_url,
 		)
 

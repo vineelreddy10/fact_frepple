@@ -91,3 +91,26 @@ class TestIframeHelper(UnitTestCase):
 		token = url.split("webtoken=", 1)[1]
 		decoded = jwt.decode(token, "override-secret", algorithms=["HS256"])
 		self.assertEqual(decoded["user"], "admin")
+
+	def test_missing_secret_key_raises_actionable_error(self):
+		"""Regression: when ``Frepple Settings.secret_key`` is empty, signing
+		fails with a clear, actionable error instead of pyjwt's opaque
+		``TypeError: Expected a string value`` (see issue: empty settings
+		crashed the iframe helper with a stack trace from inside pyjwt).
+		"""
+		original = frappe.get_single("Frepple Settings").secret_key
+		frappe.db.set_single_value("Frepple Settings", "secret_key", None)
+		frappe.db.commit()
+		try:
+			with self.assertRaises(frappe.ValidationError) as ctx:
+				sign_jwt_url(
+					"http://localhost:9000/data/input/demand/",
+					user="admin",
+					navbar=False,
+					expiration=600,
+				)
+			self.assertIn("secret_key", str(ctx.exception))
+			self.assertIn("Frepple Settings", str(ctx.exception))
+		finally:
+			frappe.db.set_single_value("Frepple Settings", "secret_key", original)
+			frappe.db.commit()

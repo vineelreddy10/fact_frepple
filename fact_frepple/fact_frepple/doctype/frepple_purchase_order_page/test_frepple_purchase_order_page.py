@@ -7,8 +7,8 @@ import frappe
 from frappe.tests import UnitTestCase
 
 
-class TestResourceReportPage(UnitTestCase):
-	"""Phase 3 acceptance — `Resource Report Page` iframe URL helper."""
+class TestFrepplePurchaseOrderPage(UnitTestCase):
+	"""Phase 3 acceptance — `Frepple Purchase Order Page` iframe URL helper."""
 
 	def test_get_iframe_url_signs_with_frepple_settings_secret(self):
 		frappe.db.set_single_value(
@@ -23,22 +23,22 @@ class TestResourceReportPage(UnitTestCase):
 			},
 		)
 		frappe.db.set_single_value(
-			"Resource Report Page",
+			"Frepple Purchase Order Page",
 			{
 				"expiration": 600,
 				"user": "admin",
 				"show_navigation_bar": 0,
-				"url": "http://localhost:9000/data/input/operationplanresource/",
+				"url": "http://localhost:9000/data/input/purchaseorder/",
 			},
 		)
 		frappe.db.commit()
 
-		from fact_frepple.fact_frepple.doctype.resource_report_page.resource_report_page import (
+		from fact_frepple.fact_frepple.doctype.frepple_purchase_order_page.frepple_purchase_order_page import (
 			get_iframe_url,
 		)
 
 		url = get_iframe_url()
-		self.assertTrue(url.startswith("http://localhost:9000/data/input/operationplanresource/"))
+		self.assertTrue(url.startswith("http://localhost:9000/data/input/purchaseorder/"))
 		self.assertIn("webtoken=", url)
 
 		import jwt

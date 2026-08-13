@@ -1,5 +1,5 @@
 {
- "creation": "2022-01-27 16:49:19.700612",
+ "creation": "2022-01-27 14:56:25.540942",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -24,24 +24,24 @@
    "label": "User"
   },
   {
-   "default": "0",
-   "fieldname": "show_navigation_bar",
-   "fieldtype": "Check",
-   "label": "Show Navigation Bar"
-  },
-  {
-   "default": "http://localhost:9000/data/input/operationplanresource/",
+   "default": "http://91.107.206.65:9000/data/input/manufacturingorder/",
    "description": "Url of the Frepple page to be embedded.",
    "fieldname": "url",
    "fieldtype": "Data",
    "label": "Url"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_navigation_bar",
+   "fieldtype": "Check",
+   "label": "Show Navigation Bar"
   }
  ],
- "issingle": 1,
- "modified": "2022-02-08 14:52:05.176266",
- "modified_by": "Administrator",
- "module": "Fact Frepple",
- "name": "Resource Report Page",
+"issingle": 1,
+  "modified": "2022-02-08 14:52:14.168458",
+  "modified_by": "Administrator",
+  "module": "Fact Frepple",
+  "name": "Frepple Manufacturing Order Page",
  "owner": "Administrator",
  "permissions": [
   {

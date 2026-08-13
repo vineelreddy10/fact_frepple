@@ -56,6 +56,14 @@ def sign_jwt_url(
 	if not secret_key:
 		secret_key = _settings().secret_key
 
+	if not secret_key:
+		frappe.throw(
+			"Frepple Settings 'secret_key' is not set. "
+			"Configure it on the Frepple Settings page (it must match the "
+			"frepple container's SECRET_KEY / SECRET_WEBTOKEN_KEY) before "
+			"loading any iframe page."
+		)
+
 	webtoken = jwt.encode(
 		{
 			# Truncate rather than round: rounding up can push ``exp`` a second

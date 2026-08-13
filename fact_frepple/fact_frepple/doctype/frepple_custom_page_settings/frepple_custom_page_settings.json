@@ -4,17 +4,18 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": [
-  "page_name",
-  "expiration",
-  "user",
-  "secret_key",
-  "column_break_4",
-  "url",
-  "iframe_height",
-  "show_navigation_bar",
-  "frepple_settings"
- ],
+  "field_order": [
+   "page_name",
+   "default",
+   "expiration",
+   "user",
+   "secret_key",
+   "column_break_4",
+   "url",
+   "iframe_height",
+   "show_navigation_bar",
+   "frepple_settings"
+  ],
  "fields": [
   {
    "fieldname": "page_name",
@@ -23,6 +24,13 @@
    "label": "Page Name",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "default": "0",
+   "description": "If checked, this page is auto-loaded when the Frepple Custom Page desk page is opened. Pick one row as default.",
+   "fieldname": "default",
+   "fieldtype": "Check",
+   "label": "Default"
   },
   {
    "default": "7200",

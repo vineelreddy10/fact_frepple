@@ -8,13 +8,13 @@ from frappe.model.document import Document
 from fact_frepple.fact_frepple.page._iframe import sign_jwt_url
 
 
-class PurchaseOrderPage(Document):
+class FreppleResourceReportPage(Document):
 	pass
 
 
 @frappe.whitelist()
 def get_iframe_url() -> str:
-	doc = frappe.get_doc("Purchase Order Page")
+	doc = frappe.get_doc("Frepple Resource Report Page")
 
 	return sign_jwt_url(
 		doc.url,
