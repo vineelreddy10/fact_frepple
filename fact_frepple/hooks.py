@@ -2,8 +2,12 @@ app_name = "fact_frepple"
 app_title = "Fact Frepple"
 app_publisher = "vineel"
 app_description = "Frepple integration with fact"
+app_icon = "fa fa-calendar"
+app_color = "#e74c3c"
 app_email = "vineel@asakta.com"
 app_license = "mit"
+app_logo_url = "/assets/fact_frepple/icons/fact_frepple.svg"
+app_home = "/app/fact-frepple"
 
 # Send non-GET requests for this app's endpoints as native `application/json`
 # bodies instead of form-encoded, per-key JSON-stringified values.
@@ -15,24 +19,25 @@ use_json_request_body = True
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "fact_frepple",
-# 		"logo": "/assets/fact_frepple/logo.png",
-# 		"title": "Fact Frepple",
-# 		"route": "/fact_frepple",
-# 		"has_permission": "fact_frepple.api.permission.has_app_permission",
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": app_name,
+		"logo": app_logo_url,
+		"title": app_title,
+		"route": app_home,
+	}
+]
 
 # Companion apps that extend a host app (instead of taking their own apps-screen icon) can pin
 # their workspaces into the host app's workspace dock (rail) with this hook. Declaring it keeps
 # the app off the apps screen, so it takes precedence over any add_to_apps_screen above. Who can
 # see a pinned workspace is controlled by that workspace's own Roles table.
+# Disabled for fact_frepple: the connector runs as a standalone app to keep non-ERPNext installs
+# possible (see specs/desktop-workspace-sidebar.md D-13).
 # add_to_workspace_dock = [
 # 	{
 # 		"app": "erpnext",
-# 		"workspace": "My Workspace",
+# 		"workspace": "Fact Frepple",
 # 	}
 # ]
 
@@ -40,8 +45,11 @@ use_json_request_body = True
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/fact_frepple/css/fact_frepple.css"
-# app_include_js = "/assets/fact_frepple/js/fact_frepple.js"
+app_include_css = "/assets/fact_frepple/css/fact_frepple.css"
+# The frepple_route_overrides.js shim and its boot_session companion were
+# removed when the four slug-colliding singletons were renamed (Supply Path
+# Page → Frepple Supply Path Page, etc.). The slugs no longer collide, so the
+# desk Page at /desk/<slug> routes naturally without any client-side surgery.
 
 # include js, css files in header of web template
 # web_include_css = "/assets/fact_frepple/css/fact_frepple.css"
@@ -66,7 +74,7 @@ use_json_request_body = True
 # Svg Icons
 # ------------------
 # include app icons in desk
-# app_include_icons = "fact_frepple/public/icons.svg"
+app_include_icons = "/assets/fact_frepple/icons/fact_frepple.svg"
 
 # Home Pages
 # ----------
@@ -295,3 +303,8 @@ require_type_annotated_api_methods = True
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+
+# Bench CLI
+# ---------
+# Exposes `bench --site <site> fact-frepple-e2e` (Phase 6 end-to-end runner).
+commands = "fact_frepple.commands.commands"

@@ -33,6 +33,40 @@ jobs:
           pip install semgrep
           semgrep ci --config ./frappe-semgrep-rules/rules --config r/python.lang.correctness
 
+  ruff:
+    name: 'Ruff (Python lint + format)'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: pip
+
+      - name: Install and run ruff
+        run: |
+          pip install ruff
+          ruff check .
+          ruff format --check .
+
+  prettier:
+    name: 'Prettier (JS / CSS / JSON)'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install and run prettier
+        run: |
+          npm install --no-save prettier
+          npx prettier --check "**/*.{js,css,json,md}" --ignore-path .prettierignore
+
   deps-vulnerable-check:
     name: 'Vulnerable Dependency Check'
     runs-on: ubuntu-latest

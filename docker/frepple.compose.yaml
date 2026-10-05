@@ -1,0 +1,46 @@
+name: frepple-dev
+
+services:
+  frepple:
+    image: ghcr.io/frepple/frepple-community:9.17.0
+    container_name: frepple-dev
+    ports:
+      - "9000:80"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: frepple
+      POSTGRES_PASSWORD: frepple
+      POSTGRES_DBNAME: frepple
+      FREPPLE_TIME_ZONE: UTC
+      FREPPLE_CONTENT_SECURITY_POLICY: "frame-ancestors 'self' http://localhost:8003"
+      FREPPLE_X_FRAME_OPTIONS: SAMEORIGIN
+      FREPPLE_CSRF_TRUSTED_ORIGINS: "http://localhost:8003,http://test.localhost:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - frepple-config:/etc/frepple
+      - frepple-logs:/var/log/frepple
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: frepple-postgres
+    environment:
+      POSTGRES_DB: frepple
+      POSTGRES_USER: frepple
+      POSTGRES_PASSWORD: frepple
+    volumes:
+      - frepple-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U frepple -d frepple"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  frepple-pgdata:
+  frepple-config:
+  frepple-logs:

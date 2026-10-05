@@ -1,0 +1,22 @@
+/* fact_frepple — desk overrides
+ *
+ * The v17 desk layout (apps/frappe/frappe/public/scss/desk/) is a horizontal
+ * flex row on `body`:
+ *
+ *   .workspace-dock (50px rail, only when workspace-dock-active)
+ *   .body-sidebar-container
+ *     └─ .body-sidebar-placeholder  (reserves --sidebar-width, 220px)
+ *        └─ .body-sidebar           (absolutely positioned over it)
+ *   .main-section                   (scroll container, flexes to fill)
+ *
+ * The placeholder reserves the sidebar's width in-flow, so `.main-section`
+ * already sits flush against the sidebar. Do NOT add a `margin-left` equal
+ * to `--sidebar-width` on `.main-section` — the flex row already reserves
+ * that space, and a second reservation pushes the page content right into a
+ * white gutter (regression observed on 2026-08-11, see
+ * specs/desktop-workspace-sidebar.md and commit eb8c6f8 which introduced it).
+ *
+ * `app_include_icons` must point at the bundled `/assets/...` path (not a
+ * repo-relative path); a 404 there injects the error HTML into #all-symbols
+ * via `include_icons()` in frappe's desk.html template.
+ */
