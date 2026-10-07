@@ -17,8 +17,8 @@ test database is empty of those parents, so a real insert would trip
 synthesised new-doc mirrors what production does once those parents exist.
 """
 
-from unittest.mock import patch
 from contextlib import ExitStack
+from unittest.mock import patch
 
 import frappe
 from frappe.tests import UnitTestCase
@@ -116,9 +116,7 @@ class TestFreppleIntegrationDataFetching(UnitTestCase):
 		self.assertEqual(get_wip_location_prefix(), "Work In Progress")
 
 	def test_wip_prefix_from_settings(self):
-		frappe.db.set_single_value(
-			"Frepple Settings", "wip_location_name", "Production Floor"
-		)
+		frappe.db.set_single_value("Frepple Settings", "wip_location_name", "Production Floor")
 		frappe.db.commit()
 		self.assertEqual(get_wip_location_prefix(), "Production Floor")
 
@@ -138,10 +136,20 @@ class TestFreppleIntegrationDataFetching(UnitTestCase):
 		router = _SqlRouter(
 			{
 				"tabItem": [
-					_row(item_code="FG-001", item_name="Finished Good 001",
-						item_group="Products", valuation_rate=100.0, stock_uom="Nos"),
-					_row(item_code="RM-001", item_name="Raw Material 001",
-						item_group="Raw Materials", valuation_rate=5.0, stock_uom="Kg"),
+					_row(
+						item_code="FG-001",
+						item_name="Finished Good 001",
+						item_group="Products",
+						valuation_rate=100.0,
+						stock_uom="Nos",
+					),
+					_row(
+						item_code="RM-001",
+						item_name="Raw Material 001",
+						item_group="Raw Materials",
+						valuation_rate=5.0,
+						stock_uom="Kg",
+					),
 				]
 			}
 		)
@@ -169,16 +177,34 @@ class TestFreppleIntegrationDataFetching(UnitTestCase):
 		)
 
 		router = _SqlRouter(
-			{"tabItem": [_row(item_code="FG-001", item_name="FG", item_group="Products",
-							  valuation_rate=100.0, stock_uom="Nos")]}
+			{
+				"tabItem": [
+					_row(
+						item_code="FG-001",
+						item_name="FG",
+						item_group="Products",
+						valuation_rate=100.0,
+						stock_uom="Nos",
+					)
+				]
+			}
 		)
 		with patch("frappe.db.sql", side_effect=router):
 			fetch_items()
 
 		# Second fetch with new cost
 		router = _SqlRouter(
-			{"tabItem": [_row(item_code="FG-001", item_name="FG", item_group="Products",
-							  valuation_rate=125.0, stock_uom="Nos")]}
+			{
+				"tabItem": [
+					_row(
+						item_code="FG-001",
+						item_name="FG",
+						item_group="Products",
+						valuation_rate=125.0,
+						stock_uom="Nos",
+					)
+				]
+			}
 		)
 		with patch("frappe.db.sql", side_effect=router):
 			fetch_items()
@@ -195,8 +221,7 @@ class TestFreppleIntegrationDataFetching(UnitTestCase):
 		router = _SqlRouter(
 			{
 				"tabCustomer": [
-					_row(name="CUST-001", customer_group="All Customer Groups",
-						customer_type="Individual"),
+					_row(name="CUST-001", customer_group="All Customer Groups", customer_type="Individual"),
 				]
 			}
 		)
@@ -218,9 +243,7 @@ class TestFreppleIntegrationDataFetching(UnitTestCase):
 			fetch_buffers,
 		)
 
-		router = _SqlRouter(
-			{"tabBin": [_row(warehouse="Stores", item_code="RM-001", actual_qty=10)]}
-		)
+		router = _SqlRouter({"tabBin": [_row(warehouse="Stores", item_code="RM-001", actual_qty=10)]})
 		with patch("frappe.db.sql", side_effect=router):
 			fetch_buffers()
 
@@ -234,9 +257,7 @@ class TestFreppleIntegrationDataFetching(UnitTestCase):
 		self.assertEqual(rows[0].onhand, 10)
 
 		# Second fetch updates qty
-		router = _SqlRouter(
-			{"tabBin": [_row(warehouse="Stores", item_code="RM-001", actual_qty=75)]}
-		)
+		router = _SqlRouter({"tabBin": [_row(warehouse="Stores", item_code="RM-001", actual_qty=75)]})
 		with patch("frappe.db.sql", side_effect=router):
 			fetch_buffers()
 

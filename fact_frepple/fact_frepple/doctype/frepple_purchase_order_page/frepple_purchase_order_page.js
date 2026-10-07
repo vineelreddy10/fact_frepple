@@ -2,8 +2,7 @@
 // Ported to fact_frepple on v17; original at msf4-0/ERPNext-Frepple-Integration.
 // For license information, please see license.txt
 
-frappe.ui.form.on('Frepple Purchase Order Page', {
+frappe.ui.form.on("Frepple Purchase Order Page", {
 	// refresh: function(frm) {
-
 	// }
 });

@@ -54,19 +54,17 @@ def _new_table(old: str) -> str:
 
 
 def execute():
-	for old, new, suffix in RENAMES:
+	for old, new, suffix in RENAMES:  # noqa: B007 (old and suffix are read further down)
 		old_table = _new_table(old)
 		new_table = _new_table(new)
 
 		# Step 1: RENAME TABLE (only if old exists and new doesn't)
 		old_exists = frappe.db.sql(
-			"SELECT 1 FROM information_schema.tables "
-			"WHERE table_name = %s LIMIT 1",
+			"SELECT 1 FROM information_schema.tables WHERE table_name = %s LIMIT 1",
 			old_table,
 		)
 		new_exists = frappe.db.sql(
-			"SELECT 1 FROM information_schema.tables "
-			"WHERE table_name = %s LIMIT 1",
+			"SELECT 1 FROM information_schema.tables WHERE table_name = %s LIMIT 1",
 			new_table,
 		)
 		if old_exists and not new_exists:
@@ -106,7 +104,7 @@ def execute():
 		print("  no Frepple Settings.url — skipping URL re-seed step")
 		return
 
-	for old, new, suffix in RENAMES:
+	for _old, new, suffix in RENAMES:
 		try:
 			row = frappe.db.get_value(new, new, "url")
 		except Exception:

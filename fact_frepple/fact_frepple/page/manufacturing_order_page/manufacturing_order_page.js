@@ -2,11 +2,11 @@
 // Ported to fact_frepple on v17; original at msf4-0/ERPNext-Frepple-Integration.
 // For license information, please see license.txt
 
-frappe.pages['manufacturing-order-page'].on_page_load = (wrapper) => {
+frappe.pages["manufacturing-order-page"].on_page_load = (wrapper) => {
 	const page = frappe.ui.make_app_page({
-		'parent': wrapper,
-		'title': 'Frepple Manufacturing Order Page',
-		'single_column': true
+		parent: wrapper,
+		title: "Frepple Manufacturing Order Page",
+		single_column: true,
 	});
 	new ManufacturingOrderPage(page, wrapper);
 };
@@ -19,12 +19,11 @@ class ManufacturingOrderPage {
 	}
 
 	showIframe() {
-		this.getSettings().then(
-			(r) => {
-				this.URL = r.message;
-				if (this.URL) {
-					const safeURL = frappe.utils.escape_html(this.URL);
-					const iFrameHtml = `
+		this.getSettings().then((r) => {
+			this.URL = r.message;
+			if (this.URL) {
+				const safeURL = frappe.utils.escape_html(this.URL);
+				const iFrameHtml = `
 						<iframe
 							src="${safeURL}"
 							width="100%"
@@ -35,15 +34,14 @@ class ManufacturingOrderPage {
 							scrolling="yes"
 						/>
 					`;
-					this.iFrame = $(iFrameHtml).appendTo(this.pageMain);
-				}
+				this.iFrame = $(iFrameHtml).appendTo(this.pageMain);
 			}
-		);
+		});
 	}
 
 	getSettings() {
 		return frappe.call({
-			'method': 'fact_frepple.fact_frepple.doctype.frepple_manufacturing_order_page.frepple_manufacturing_order_page.get_iframe_url'
+			method: "fact_frepple.fact_frepple.doctype.frepple_manufacturing_order_page.frepple_manufacturing_order_page.get_iframe_url",
 		});
 	}
 }

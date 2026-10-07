@@ -2,11 +2,11 @@
 // For license information, please see license.txt
 // Ported to fact_frepple on v17; original at msf4-0/ERPNext-Frepple-Integration.
 
-frappe.pages['frepple-custom-page'].on_page_load = (wrapper) => {
+frappe.pages["frepple-custom-page"].on_page_load = (wrapper) => {
 	const page = frappe.ui.make_app_page({
-		'parent': wrapper,
-		'title': 'Frepple Custom Page',
-		'single_column': true,
+		parent: wrapper,
+		title: "Frepple Custom Page",
+		single_column: true,
 	});
 
 	new FreppleCustomPage(page, wrapper);
@@ -17,11 +17,8 @@ class FreppleCustomPage {
 		this.currentPage = false;
 		this.wrapper = wrapper;
 		this.pageMain = $(page.main);
-		this.pageAction = (
-			$(this.wrapper)
-				.find('div.page-head div.page-actions')
-		);
-		this.pageTitle = $(this.wrapper).find('div.title-text');
+		this.pageAction = $(this.wrapper).find("div.page-head div.page-actions");
+		this.pageTitle = $(this.wrapper).find("div.title-text");
 
 		this.init();
 	}
@@ -35,28 +32,29 @@ class FreppleCustomPage {
 		// Auto-render the row marked default=1 so the page is not empty on
 		// first visit. The picker is still authoritative; once the operator
 		// picks a row from the dropdown, normal switching takes over.
-		frappe.call({
-			method: 'fact_frepple.fact_frepple.doctype.frepple_custom_page_settings.frepple_custom_page_settings.get_default_page_name',
-		}).then((r) => {
-			const pageName = r && r.message;
-			if (pageName) {
-				this.pageName = pageName;
-				this.showIframe();
-				this.changeTitle();
-				this.currentPage = this.pageName;
-			}
-		});
+		frappe
+			.call({
+				method: "fact_frepple.fact_frepple.doctype.frepple_custom_page_settings.frepple_custom_page_settings.get_default_page_name",
+			})
+			.then((r) => {
+				const pageName = r && r.message;
+				if (pageName) {
+					this.pageName = pageName;
+					this.showIframe();
+					this.changeTitle();
+					this.currentPage = this.pageName;
+				}
+			});
 	}
 
 	showIframe() {
-		this.getSettings().then(
-			(r) => {
-				this.URL = r.message.URL;
-				this.iframeHeight = r.message.iframeHeight;
+		this.getSettings().then((r) => {
+			this.URL = r.message.URL;
+			this.iframeHeight = r.message.iframeHeight;
 
-				if (this.URL) {
-					const safeURL = frappe.utils.escape_html(this.URL);
-					const iFrameHtml = `
+			if (this.URL) {
+				const safeURL = frappe.utils.escape_html(this.URL);
+				const iFrameHtml = `
 						<iframe
 							src="${safeURL}"
 							width="100%"
@@ -67,29 +65,28 @@ class FreppleCustomPage {
 							scrolling="yes"
 						/>
 					`;
-					this.iFrame = $(iFrameHtml).appendTo(this.pageMain);
-				}
+				this.iFrame = $(iFrameHtml).appendTo(this.pageMain);
 			}
-		);
+		});
 	}
 
 	getSettings() {
 		return frappe.call({
-			'method': 'fact_frepple.fact_frepple.doctype.frepple_custom_page_settings.frepple_custom_page_settings.get_iframe_url',
-			'args': {
-				'page_name': this.pageName,
+			method: "fact_frepple.fact_frepple.doctype.frepple_custom_page_settings.frepple_custom_page_settings.get_iframe_url",
+			args: {
+				page_name: this.pageName,
 			},
 		});
 	}
 
 	createSelectionField() {
 		this.selectionField = frappe.ui.form.make_control({
-			'parent': this.pageAction,
-			'df': {
-				'fieldname': 'Page',
-				'fieldtype': 'Link',
-				'options': 'Frepple Custom Page Settings',
-				'onchange': () => {
+			parent: this.pageAction,
+			df: {
+				fieldname: "Page",
+				fieldtype: "Link",
+				options: "Frepple Custom Page Settings",
+				onchange: () => {
 					const pageName = this.selectionField.get_value();
 					if (pageName) {
 						this.pageName = pageName;
@@ -101,16 +98,16 @@ class FreppleCustomPage {
 
 							this.currentPage = this.pageName;
 						}
-						this.selectionField.set_input('');
+						this.selectionField.set_input("");
 					}
 				},
-				'placeholder': 'Select Page',
+				placeholder: "Select Page",
 			},
-			'render_input': true,
+			render_input: true,
 		});
 
-		this.pageAction.removeClass('page-actions');
-		this.selectionField.$wrapper.css('text-align', 'left');
+		this.pageAction.removeClass("page-actions");
+		this.selectionField.$wrapper.css("text-align", "left");
 	}
 
 	changeTitle() {

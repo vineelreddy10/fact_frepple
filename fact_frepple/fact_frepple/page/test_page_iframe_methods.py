@@ -61,7 +61,7 @@ class TestPageIframeMethodPaths(UnitTestCase):
 		return match.group(1)
 
 	def test_renamed_pages_reference_the_new_module(self):
-		for page_folder, old_slug, new_slug in RENAMED_SLUGS:
+		for page_folder, _old_slug, new_slug in RENAMED_SLUGS:
 			with self.subTest(page=page_folder):
 				path = self._read_method_path(page_folder)
 				self.assertEqual(

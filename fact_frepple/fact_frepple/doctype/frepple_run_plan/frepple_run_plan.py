@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2022, Drayang Chua and contributors
 # Ported to fact_frepple on v17; original at msf4-0/ERPNext-Frepple-Integration.
 # For license information, please see license.txt
@@ -68,10 +67,7 @@ def run_plan(doc: str) -> dict:
 
 	settings = frappe.get_doc("Frepple Settings")
 	temp_url = settings.url.split("//")
-	url = (
-		f"http://{settings.username}:{settings.password}@{temp_url[1]}"
-		f"/execute/api/runplan/?{query}"
-	)
+	url = f"http://{settings.username}:{settings.password}@{temp_url[1]}/execute/api/runplan/?{query}"
 	_logger.info(f"run_plan → {url}")
 
 	headers = {
@@ -102,9 +98,7 @@ def wait_for_task(taskid: int | str, timeout: int = 300, poll: int = 3) -> str:
 	deadline = time.time() + timeout
 
 	while time.time() < deadline:
-		resp = requests.get(
-			f"{settings.url}/execute/api/status/?id={taskid}", auth=auth, timeout=30
-		)
+		resp = requests.get(f"{settings.url}/execute/api/status/?id={taskid}", auth=auth, timeout=30)
 		resp.raise_for_status()
 		payload = resp.json()
 		status = (payload.get(str(taskid)) or {}).get("status")
@@ -145,10 +139,12 @@ def export_manufacturing_orders() -> None:
 
 	for mo in mos:
 		_logger.info(f"export_manufacturing_orders row: {mo}")
-		data = json.dumps({
-			"reference": mo.latest_reference,
-			"status": mo.status,
-		})
+		data = json.dumps(
+			{
+				"reference": mo.latest_reference,
+				"status": mo.status,
+			}
+		)
 		make_post_request(url, headers=headers, data=data)
 
 
@@ -166,10 +162,12 @@ def export_purchase_orders() -> None:
 
 	for po in pos:
 		_logger.info(f"export_purchase_orders row: {po}")
-		data = json.dumps({
-			"reference": po.latest_reference,
-			"status": po.status,
-		})
+		data = json.dumps(
+			{
+				"reference": po.latest_reference,
+				"status": po.status,
+			}
+		)
 		make_post_request(url, headers=headers, data=data)
 
 
@@ -287,4 +285,3 @@ def generate_purchase_order(data: list[dict]) -> None:
 					"quantity": i["quantity"],
 				},
 			)
-

@@ -37,13 +37,15 @@ def _exists(doctype: str, name: str) -> bool:
 
 def ensure_company() -> str:
 	if not _exists("Company", COMPANY):
-		frappe.get_doc({
-			"doctype": "Company",
-			"company_name": COMPANY,
-			"abbr": ABBR,
-			"default_currency": "USD",
-			"country": "United States",
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Company",
+				"company_name": COMPANY,
+				"abbr": ABBR,
+				"default_currency": "USD",
+				"country": "United States",
+			}
+		).insert(ignore_permissions=True)
 	return COMPANY
 
 
@@ -53,51 +55,59 @@ def ensure_warehouses() -> None:
 	for wh in ("Stores", "Work In Progress"):
 		full = f"{wh} - {ABBR}"
 		if not _exists("Warehouse", full):
-			frappe.get_doc({
-				"doctype": "Warehouse",
-				"warehouse_name": wh,
-				"company": COMPANY,
-				"is_group": 0,
-			}).insert(ignore_permissions=True)
+			frappe.get_doc(
+				{
+					"doctype": "Warehouse",
+					"warehouse_name": wh,
+					"company": COMPANY,
+					"is_group": 0,
+				}
+			).insert(ignore_permissions=True)
 
 
 def ensure_uom_and_group() -> None:
 	if not _exists("UOM", "Nos"):
 		frappe.get_doc({"doctype": "UOM", "uom_name": "Nos"}).insert(ignore_permissions=True)
 	if not _exists("Item Group", "Products"):
-		frappe.get_doc({
-			"doctype": "Item Group",
-			"item_group_name": "Products",
-			"parent_item_group": "All Item Groups",
-			"is_group": 0,
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Item Group",
+				"item_group_name": "Products",
+				"parent_item_group": "All Item Groups",
+				"is_group": 0,
+			}
+		).insert(ignore_permissions=True)
 
 
 def ensure_item(code: str, *, is_manufactured: bool, rate: float) -> str:
 	if not _exists("Item", code):
-		frappe.get_doc({
-			"doctype": "Item",
-			"item_code": code,
-			"item_name": code,
-			"item_group": "Products",
-			"stock_uom": "Nos",
-			"is_stock_item": 1,
-			"valuation_rate": rate,
-			"default_material_request_type": "Manufacture" if is_manufactured else "Purchase",
-			"item_defaults": [{"company": COMPANY, "default_warehouse": STORES}],
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Item",
+				"item_code": code,
+				"item_name": code,
+				"item_group": "Products",
+				"stock_uom": "Nos",
+				"is_stock_item": 1,
+				"valuation_rate": rate,
+				"default_material_request_type": "Manufacture" if is_manufactured else "Purchase",
+				"item_defaults": [{"company": COMPANY, "default_warehouse": STORES}],
+			}
+		).insert(ignore_permissions=True)
 	return code
 
 
 def ensure_supplier() -> str:
 	if not _exists("Supplier", SUPPLIER):
-		frappe.get_doc({
-			"doctype": "Supplier",
-			"supplier_name": SUPPLIER,
-			# Must be a leaf node — ERPNext rejects group nodes like
-			# "All Supplier Groups" with a ValidationError.
-			"supplier_group": "Raw Material",
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Supplier",
+				"supplier_name": SUPPLIER,
+				# Must be a leaf node — ERPNext rejects group nodes like
+				# "All Supplier Groups" with a ValidationError.
+				"supplier_group": "Raw Material",
+			}
+		).insert(ignore_permissions=True)
 
 	# The 7-day lead time is what makes frepple schedule the PO earlier than
 	# the MO rather than collapsing both onto the same date.
@@ -111,32 +121,38 @@ def ensure_supplier() -> str:
 
 def ensure_customer() -> str:
 	if not _exists("Customer", CUSTOMER):
-		frappe.get_doc({
-			"doctype": "Customer",
-			"customer_name": CUSTOMER,
-			"customer_group": "Commercial",
-			"territory": "Rest Of The World",
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Customer",
+				"customer_name": CUSTOMER,
+				"customer_group": "Commercial",
+				"territory": "Rest Of The World",
+			}
+		).insert(ignore_permissions=True)
 	return CUSTOMER
 
 
 def ensure_workstation() -> str:
 	if not _exists("Operation", OPERATION):
-		frappe.get_doc({
-			"doctype": "Operation",
-			# Operation and Workstation both autoname by prompt, so `name`
-			# must be set explicitly rather than derived from the title field.
-			"name": OPERATION,
-			"operation": OPERATION,
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Operation",
+				# Operation and Workstation both autoname by prompt, so `name`
+				# must be set explicitly rather than derived from the title field.
+				"name": OPERATION,
+				"operation": OPERATION,
+			}
+		).insert(ignore_permissions=True)
 	if not _exists("Workstation", WORKSTATION):
-		frappe.get_doc({
-			"doctype": "Workstation",
-			# Workstation autonames by prompt, so `name` must be set explicitly.
-			"name": WORKSTATION,
-			"workstation_name": WORKSTATION,
-			"hour_rate": 10,
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Workstation",
+				# Workstation autonames by prompt, so `name` must be set explicitly.
+				"name": WORKSTATION,
+				"workstation_name": WORKSTATION,
+				"hour_rate": 10,
+			}
+		).insert(ignore_permissions=True)
 	return WORKSTATION
 
 
@@ -145,54 +161,60 @@ def ensure_bom() -> str:
 	if existing:
 		return existing[0].name
 
-	bom = frappe.get_doc({
-		"doctype": "BOM",
-		"item": FG,
-		"company": COMPANY,
-		"quantity": 1,
-		"is_active": 1,
-		"is_default": 1,
-		"with_operations": 1,
-		"currency": "USD",
-		"operations": [{
-			"operation": OPERATION,
-			"workstation": WORKSTATION,
-			"time_in_mins": 30,
-			"hour_rate": 10,
-		}],
-		"items": [
-			{"item_code": RM1, "qty": 1, "rate": 10, "source_warehouse": STORES},
-			{"item_code": RM2, "qty": 2, "rate": 5, "source_warehouse": STORES},
-		],
-	})
+	bom = frappe.get_doc(
+		{
+			"doctype": "BOM",
+			"item": FG,
+			"company": COMPANY,
+			"quantity": 1,
+			"is_active": 1,
+			"is_default": 1,
+			"with_operations": 1,
+			"currency": "USD",
+			"operations": [
+				{
+					"operation": OPERATION,
+					"workstation": WORKSTATION,
+					"time_in_mins": 30,
+					"hour_rate": 10,
+				}
+			],
+			"items": [
+				{"item_code": RM1, "qty": 1, "rate": 10, "source_warehouse": STORES},
+				{"item_code": RM2, "qty": 2, "rate": 5, "source_warehouse": STORES},
+			],
+		}
+	)
 	bom.insert(ignore_permissions=True)
 	bom.submit()
 	return bom.name
 
 
 def ensure_sales_order() -> str:
-	existing = frappe.get_all(
-		"Sales Order", filters={"customer": CUSTOMER, "docstatus": 1}, limit=1
-	)
+	existing = frappe.get_all("Sales Order", filters={"customer": CUSTOMER, "docstatus": 1}, limit=1)
 	if existing:
 		return existing[0].name
 
-	so = frappe.get_doc({
-		"doctype": "Sales Order",
-		"customer": CUSTOMER,
-		"company": COMPANY,
-		"currency": "USD",
-		"conversion_rate": 1,
-		"transaction_date": nowdate(),
-		"delivery_date": add_days(nowdate(), 14),
-		"items": [{
-			"item_code": FG,
-			"qty": 10,
-			"rate": 100,
+	so = frappe.get_doc(
+		{
+			"doctype": "Sales Order",
+			"customer": CUSTOMER,
+			"company": COMPANY,
+			"currency": "USD",
+			"conversion_rate": 1,
+			"transaction_date": nowdate(),
 			"delivery_date": add_days(nowdate(), 14),
-			"warehouse": STORES,
-		}],
-	})
+			"items": [
+				{
+					"item_code": FG,
+					"qty": 10,
+					"rate": 100,
+					"delivery_date": add_days(nowdate(), 14),
+					"warehouse": STORES,
+				}
+			],
+		}
+	)
 	so.insert(ignore_permissions=True)
 	so.submit()
 	return so.name
