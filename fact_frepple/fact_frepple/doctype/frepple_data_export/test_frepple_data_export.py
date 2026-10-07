@@ -281,9 +281,7 @@ class TestFreppleDataExport(UnitTestCase):
 			json={"pk": 1},
 		)
 
-		router = _SqlRouter(
-			{"tabFrepple Buffer": [_row(item="RM-001", location="Stores", onhand=50)]}
-		)
+		router = _SqlRouter({"tabFrepple Buffer": [_row(item="RM-001", location="Stores", onhand=50)]})
 		with patch("frappe.db.sql", side_effect=router):
 			export_buffers()
 

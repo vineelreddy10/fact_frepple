@@ -124,13 +124,17 @@ class TestE2ETwoWayTransfer(unittest.TestCase):
 		frappe.db.commit()
 		export_data(json.dumps(export_flags()))
 
-		launched = run_plan(json.dumps({
-			"update_frepple": 0,
-			"constraint": 1,
-			"capacity": 1,
-			"lead_time": 1,
-			"release_fence": 0,
-		}))
+		launched = run_plan(
+			json.dumps(
+				{
+					"update_frepple": 0,
+					"constraint": 1,
+					"capacity": 1,
+					"lead_time": 1,
+					"release_fence": 0,
+				}
+			)
+		)
 
 		# Planning is asynchronous — reading results before the task finishes
 		# returns the previous plan (or nothing), which is how the first E2E
@@ -179,7 +183,7 @@ class TestE2ETwoWayTransfer(unittest.TestCase):
 		rm1 = [p for p in pos if p.item == "RM-001"]
 		self.assertEqual(len(rm1), 1, f"expected one PO for RM-001, got {pos}")
 		self.assertEqual(rm1[0].supplier, "SUPP-001")
-		# 10 FG-001 × 1 RM-001 per unit.
+		# 10 FG-001 x 1 RM-001 per unit.
 		self.assertEqual(float(rm1[0].quantity), 10.0)
 
 		# RM-002 has no supplier, so frepple plans it against its

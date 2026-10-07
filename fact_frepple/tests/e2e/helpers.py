@@ -97,15 +97,18 @@ def apply_e2e_settings():
 			"or FREPPLE_E2E_* env vars — see docker/README.md."
 		)
 
-	frappe.db.set_single_value("Frepple Settings", {
-		"url": conf["url"],
-		"username": conf["username"],
-		"password": conf["password"],
-		"authorization_header": conf.get("authorization_header", ""),
-		"secret_key": conf["secret_key"],
-		"wip_location_name": conf["wip_location_name"],
-		"frepple_integration": 1,
-	})
+	frappe.db.set_single_value(
+		"Frepple Settings",
+		{
+			"url": conf["url"],
+			"username": conf["username"],
+			"password": conf["password"],
+			"authorization_header": conf.get("authorization_header", ""),
+			"secret_key": conf["secret_key"],
+			"wip_location_name": conf["wip_location_name"],
+			"frepple_integration": 1,
+		},
+	)
 	frappe.db.commit()
 	return frepple_settings()
 
@@ -208,17 +211,13 @@ def purge_frepple_input(entities: tuple[str, ...] = FREPPLE_PURGE_ORDER) -> None
 
 	for entity in entities:
 		try:
-			resp = requests.get(
-				f"{base}/api/input/{entity}/?format=json", auth=auth, timeout=30
-			)
+			resp = requests.get(f"{base}/api/input/{entity}/?format=json", auth=auth, timeout=30)
 			if resp.status_code != 200:
 				continue
 			for row in resp.json():
 				key = row.get("name") or row.get("reference")
 				if not key:
 					continue
-				requests.delete(
-					f"{base}/api/input/{entity}/{key}/", auth=auth, timeout=30
-				)
+				requests.delete(f"{base}/api/input/{entity}/{key}/", auth=auth, timeout=30)
 		except requests.exceptions.RequestException:
 			continue

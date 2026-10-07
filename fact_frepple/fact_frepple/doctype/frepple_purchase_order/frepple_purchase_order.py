@@ -1,14 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2022, Drayang Chua and contributors
 # Ported to fact_frepple on v17; original at msf4-0/ERPNext-Frepple-Integration.
 # For license information, please see license.txt
 
-import frappe
 import json
+
+import frappe
 from frappe import _
-
 from frappe.model.document import Document
-
 
 # F5: logger replaces the v14 ad-hoc print() statements.
 _logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
@@ -16,6 +14,7 @@ _logger = frappe.logger("fact_frepple", allow_site=True, file_count=1)
 
 class FrepplePurchaseOrder(Document):
 	pass
+
 
 @frappe.whitelist()
 def generate_erp_po_bulk(names: str) -> None:
@@ -27,45 +26,46 @@ def generate_erp_po_bulk(names: str) -> None:
 			new_doc = frappe.new_doc("Purchase Order")
 			new_doc.status = po_status_f2e(po.status)
 			new_doc.supplier = po.supplier
-			new_doc.transaction_date = po.ordering_date  
+			new_doc.transaction_date = po.ordering_date
 			new_doc.schedule_date = po.receive_date
-			row = new_doc.append("items",{})
+			row = new_doc.append("items", {})
 			row.item_code = po.item
-			row.qty = po.quantity 
+			row.qty = po.quantity
 			new_doc.insert()
 
-			frappe.db.set_value('Frepple Purchase Order', po.name, 'erpnext_po', new_doc.name)
-			
+			frappe.db.set_value("Frepple Purchase Order", po.name, "erpnext_po", new_doc.name)
+
 
 @frappe.whitelist()
 def generate_erp_po(doc: str) -> None:
 	doc = json.loads(doc)
-	doc = frappe.get_doc("Frepple Purchase Order",doc["name"])
+	doc = frappe.get_doc("Frepple Purchase Order", doc["name"])
 	# item = frappe.db.get_value('BOM', doc.operation, 'item') #get item in such a way because frepple MO does not give us the item name if followed our algorithm
-	
+
 	if not doc.erpnext_po:
 		new_doc = frappe.new_doc("Purchase Order")
 		new_doc.status = po_status_f2e(doc.status)
 		new_doc.supplier = doc.supplier
-		new_doc.transaction_date = doc.ordering_date  
+		new_doc.transaction_date = doc.ordering_date
 		new_doc.schedule_date = doc.receive_date
-		row = new_doc.append("items",{})
+		row = new_doc.append("items", {})
 		row.item_code = doc.item
-		row.qty = doc.quantity 
+		row.qty = doc.quantity
 		new_doc.insert()
 
-		frappe.db.set_value('Frepple Purchase Order', doc.name, 'erpnext_po', new_doc.name)
+		frappe.db.set_value("Frepple Purchase Order", doc.name, "erpnext_po", new_doc.name)
 		frappe.msgprint(_("Purchase order exported successfully."))
 
 	else:
 		frappe.msgprint(_("Duplicate purchase order. Purchase order is not created"))
+
 
 # Sync the status of purchase order in erpnext with the purchase order in frepple
 @frappe.whitelist()
 def update_frepple_po_status(doc: str) -> None:
 	doc = json.loads(doc)
 	if (frappe.get_doc("Frepple Settings").frepple_integration) and doc["docstatus"]:
-		erpnext_po = frappe.get_doc("Purchase Order",doc["name"]) #ERPNext purchase order
+		erpnext_po = frappe.get_doc("Purchase Order", doc["name"])  # ERPNext purchase order
 
 		pos = frappe.db.sql(
 			"""
@@ -73,34 +73,39 @@ def update_frepple_po_status(doc: str) -> None:
 			FROM `tabFrepple Purchase Order`
 			WHERE erpnext_po = %s
 			""",
-		erpnext_po.name,as_dict=1)
+			erpnext_po.name,
+			as_dict=1,
+		)
 
 		for po in pos:
 			# mo = frappe.db.get_list('Frepple Manufacturing Order', filters={
-			# 	'erpnext_wo': [wo.name]	
+			# 	'erpnext_wo': [wo.name]
 			# }) # Get the frepple manufacturing order with owner work order match
 
 			# print(mo[0])
-			frappe.db.set_value('Frepple Purchase Order', po.name, 'status',po_status_e2f(erpnext_po.status)) #Update the status
+			frappe.db.set_value(
+				"Frepple Purchase Order", po.name, "status", po_status_e2f(erpnext_po.status)
+			)  # Update the status
 			_logger.info(f"{po_status_e2f(erpnext_po.status)}")
+
 
 # CHeck the erpnext purchase order status and get its correspond frepple purchase status
 # ERPNExt -> Frepple
 def po_status_e2f(status):
-	switcher={
-		"Draft":'proposed',
-		"On Hold":'approved',
-		"To Receive and Bill":'confirmed',
-		"To Bill":'confirmed',
-		"To Deliver":'confirmed',
-		"Completed":'completed',
-		"Cancelled":'canceled',
-		"Closed":'closed',
-		"Delivered":'closed'
-		}
-	return switcher.get(status,"proposed")
+	switcher = {
+		"Draft": "proposed",
+		"On Hold": "approved",
+		"To Receive and Bill": "confirmed",
+		"To Bill": "confirmed",
+		"To Deliver": "confirmed",
+		"Completed": "completed",
+		"Cancelled": "canceled",
+		"Closed": "closed",
+		"Delivered": "closed",
+	}
+	return switcher.get(status, "proposed")
 
-	'ERPNext'				'Frepple'
+	"ERPNextFrepple"
 	# Draft					proposed
 	# On Hold				approved
 	# To Deliver and Bill	confirmed
@@ -111,25 +116,23 @@ def po_status_e2f(status):
 	# Closed
 	# Delivered
 
+
 # CHeck the erpnext purchase order status and get its correspond frepple purchase status
 # Frepple -> ERPNext
 def po_status_f2e(status):
-	switcher={
-		"proposed":'Draft',
+	switcher = {
+		"proposed": "Draft",
 		# "approved":'',
-		"confirmed":'To Deliver and Bill',
-		"closed":'Closed',
-		"completed":'Completed',
-
-		}
-	return switcher.get(status,"inquiry")
-	switcher={
-		"proposed":'Draft',
-		# "approved":'',
-		"confirmed":'To Deliver and Bill',
-		"closed":'Closed',
-		"completed":'Completed',
-
+		"confirmed": "To Deliver and Bill",
+		"closed": "Closed",
+		"completed": "Completed",
 	}
-	return switcher.get(status,"Draft")
-
+	return switcher.get(status, "inquiry")
+	switcher = {
+		"proposed": "Draft",
+		# "approved":'',
+		"confirmed": "To Deliver and Bill",
+		"closed": "Closed",
+		"completed": "Completed",
+	}
+	return switcher.get(status, "Draft")

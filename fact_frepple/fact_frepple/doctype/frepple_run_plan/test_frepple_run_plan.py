@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2022, Drayang Chua and Contributors
 # Ported to fact_frepple on v17; original at msf4-0/ERPNext-Frepple-Integration.
 # See license.txt
@@ -56,14 +55,16 @@ class TestFreppleRunPlan(UnitTestCase):
 			json={"ok": True},
 		)
 
-		doc = json.dumps({
-			"constraint": 1,
-			"unconstraint": 0,
-			"capacity": 1,
-			"lead_time": 1,
-			"release_fence": 0,
-			"update_frepple": 0,
-		})
+		doc = json.dumps(
+			{
+				"constraint": 1,
+				"unconstraint": 0,
+				"capacity": 1,
+				"lead_time": 1,
+				"release_fence": 0,
+				"update_frepple": 0,
+			}
+		)
 
 		run_plan(doc)
 
@@ -97,14 +98,16 @@ class TestFreppleRunPlan(UnitTestCase):
 			json={"ok": True},
 		)
 
-		doc = json.dumps({
-			"constraint": 1,
-			"unconstraint": 0,
-			"capacity": 0,
-			"lead_time": 0,
-			"release_fence": 0,
-			"update_frepple": 0,
-		})
+		doc = json.dumps(
+			{
+				"constraint": 1,
+				"unconstraint": 0,
+				"capacity": 0,
+				"lead_time": 0,
+				"release_fence": 0,
+				"update_frepple": 0,
+			}
+		)
 
 		run_plan(doc)
 
@@ -126,13 +129,15 @@ class TestFreppleRunPlan(UnitTestCase):
 		different /api/input/<entity>/ endpoint).
 		"""
 		# Stub the three pre-export functions so they don't try to SQL.
-		with patch(
-			"fact_frepple.fact_frepple.doctype.frepple_run_plan.frepple_run_plan.export_sales_orders"
-		), patch(
-			"fact_frepple.fact_frepple.doctype.frepple_run_plan.frepple_run_plan.export_manufacturing_orders"
-		), patch(
-			"fact_frepple.fact_frepple.doctype.frepple_run_plan.frepple_run_plan.export_purchase_orders"
-		) as mock_po:
+		with (
+			patch("fact_frepple.fact_frepple.doctype.frepple_run_plan.frepple_run_plan.export_sales_orders"),
+			patch(
+				"fact_frepple.fact_frepple.doctype.frepple_run_plan.frepple_run_plan.export_manufacturing_orders"
+			),
+			patch(
+				"fact_frepple.fact_frepple.doctype.frepple_run_plan.frepple_run_plan.export_purchase_orders"
+			) as mock_po,
+		):
 			# Stub the 3 export endpoints to swallow their POSTs.
 			for entity in ("demand", "manufacturingorder", "purchaseorder"):
 				responses.add(
@@ -149,14 +154,16 @@ class TestFreppleRunPlan(UnitTestCase):
 				json={"ok": True},
 			)
 
-			doc = json.dumps({
-				"constraint": 1,
-				"unconstraint": 0,
-				"capacity": 0,
-				"lead_time": 0,
-				"release_fence": 0,
-				"update_frepple": 1,
-			})
+			doc = json.dumps(
+				{
+					"constraint": 1,
+					"unconstraint": 0,
+					"capacity": 0,
+					"lead_time": 0,
+					"release_fence": 0,
+					"update_frepple": 1,
+				}
+			)
 			run_plan(doc)
 
 		# export_purchase_orders ran at least once (sanity check).

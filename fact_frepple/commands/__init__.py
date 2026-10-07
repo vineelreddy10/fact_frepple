@@ -30,15 +30,11 @@ def e2e(context, skip_fixtures=False):
 
 		conf = e2e_config()
 		if not conf.get("url"):
-			click.secho(
-				"No frepple E2E config found (site_config.json → frepple_e2e).", fg="red"
-			)
+			click.secho("No frepple E2E config found (site_config.json → frepple_e2e).", fg="red")
 			raise SystemExit(1)
 
 		if not frepple_available():
-			click.secho(
-				f"frepple at {conf['url']} is not reachable — is the container up?", fg="red"
-			)
+			click.secho(f"frepple at {conf['url']} is not reachable — is the container up?", fg="red")
 			raise SystemExit(1)
 
 		click.secho(f"frepple reachable at {conf['url']}", fg="green")
